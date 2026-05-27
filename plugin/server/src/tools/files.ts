@@ -1,0 +1,232 @@
+/**
+ * File tools: list / read / write (text) / history / delete + binary
+ * upload / download. Read/write are convenience wrappers for text files;
+ * upload/download handle arbitrary bytes through multipart.
+ *
+ * Local-disk semantics for upload/download:
+ *   - upload reads `localPath` (absolute or CWD-relative) from disk
+ *   - download writes to `localPath` if provided, else returns base64 bytes
+ *     plus the server-suggested filename
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ConcordClient } from '../client.js';
+import { ok, err, requireIdentity, fromError } from '../util.js';
+
+const EXT_MIME: Record<string, string> = {
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.json': 'application/json',
+  '.csv': 'text/csv',
+  '.pdf': 'application/pdf',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.html': 'text/html',
+  '.zip': 'application/zip',
+  '.tar': 'application/x-tar',
+  '.gz': 'application/gzip',
+  '.py': 'text/x-python',
+  '.js': 'text/javascript',
+  '.ts': 'application/typescript',
+};
+
+function mimeOf(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  return EXT_MIME[ext] ?? 'application/octet-stream';
+}
+
+export function registerFileTools(server: McpServer, client: ConcordClient): void {
+  server.registerTool(
+    'concord_file_list',
+    {
+      description: 'List all files in the room (path, size, headCommit, lastAuthor, lastUpdated). Check this when a human says they uploaded something, or before writing to avoid clobbering another agent\'s work.',
+      inputSchema: {},
+    },
+    async () => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'GET',
+          path: `/rooms/${identity.roomId}/files/list`,
+          query: { session: identity.agentSessionId },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_read',
+    {
+      description: 'Read a text file from the room\'s versioned store. Optionally pass `ref` to read a specific past commit. For binary content (PDFs, images, archives), use concord_file_download instead.',
+      inputSchema: {
+        path: z.string().min(1).max(500),
+        ref: z.string().optional().describe('Optional git commit SHA for a past version. Defaults to HEAD.'),
+      },
+    },
+    async ({ path: filePath, ref }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'GET',
+          path: `/rooms/${identity.roomId}/files/read`,
+          query: { session: identity.agentSessionId, path: filePath, ref },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_write',
+    {
+      description: 'Write (or overwrite) a text file in the room. Creates a commit under your author name; emits a [FILE] system message so the whole room sees the contribution. Use for reports, code, long specs, anything over ~500 chars you\'d otherwise paste into chat.',
+      inputSchema: {
+        path: z.string().min(1).max(500).describe('Relative path within the room. Nested paths like `reports/v1.md` work. Must not contain `..` or `.git`.'),
+        content: z.string().max(10_000_000).describe('UTF-8 text content. Max 10 MB.'),
+      },
+    },
+    async ({ path: filePath, content }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'POST',
+          path: `/rooms/${identity.roomId}/files/write`,
+          body: { agentSessionId: identity.agentSessionId, path: filePath, content },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_history',
+    {
+      description: 'List the commit history (newest first) for a single file in the room.',
+      inputSchema: {
+        path: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+    },
+    async ({ path: filePath, limit }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'GET',
+          path: `/rooms/${identity.roomId}/files/history`,
+          query: { session: identity.agentSessionId, path: filePath, limit: limit ?? 20 },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_delete',
+    {
+      description: 'Delete a file from the room\'s HEAD. History is preserved (the file remains accessible via concord_file_read with ref=<past-commit>). Confirm with the user before deleting files you didn\'t create.',
+      inputSchema: { path: z.string().min(1).max(500) },
+    },
+    async ({ path: filePath }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'POST',
+          path: `/rooms/${identity.roomId}/files/delete`,
+          body: { agentSessionId: identity.agentSessionId, path: filePath },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_upload',
+    {
+      description: 'Upload a local binary file (PDF, image, archive, dataset) to the room. Reads bytes from `localPath` on disk and POSTs as multipart. Max 10 MB per file. Use this for non-text artifacts; use concord_file_write for text.',
+      inputSchema: {
+        localPath: z.string().min(1).describe('Absolute or CWD-relative path to the file on disk.'),
+        remotePath: z.string().min(1).max(500).optional().describe('Path inside the room. Defaults to basename(localPath).'),
+      },
+    },
+    async ({ localPath, remotePath }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      const resolved = path.resolve(process.cwd(), localPath);
+      if (!fs.existsSync(resolved)) {
+        return err(`Local file not found: ${resolved}`, { code: 'local_file_not_found' });
+      }
+      const bytes = fs.readFileSync(resolved);
+      const filename = path.basename(resolved);
+      const remote = remotePath ?? filename;
+      try {
+        const res = await client.upload(
+          `/rooms/${identity.roomId}/files`,
+          filename,
+          new Uint8Array(bytes),
+          mimeOf(filename),
+          { agentSessionId: identity.agentSessionId, path: remote },
+        );
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    'concord_file_download',
+    {
+      description: 'Download a binary file from the room. If `localPath` is given, writes bytes to disk and returns metadata. Otherwise returns the bytes base64-encoded plus the server-reported mime + filename.',
+      inputSchema: {
+        remotePath: z.string().min(1).max(500),
+        localPath: z.string().min(1).optional().describe('If set, save the downloaded bytes here (absolute or CWD-relative). Parent dirs are created.'),
+      },
+    },
+    async ({ remotePath, localPath }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const dl = await client.download(`/rooms/${identity.roomId}/files/download`, {
+          session: identity.agentSessionId,
+          path: remotePath,
+        });
+        if (localPath) {
+          const resolved = path.resolve(process.cwd(), localPath);
+          fs.mkdirSync(path.dirname(resolved), { recursive: true });
+          fs.writeFileSync(resolved, dl.bytes);
+          return ok({ savedTo: resolved, bytes: dl.bytes.length, mime: dl.mime, filename: dl.filename });
+        }
+        return ok({
+          bytes: dl.bytes.length,
+          mime: dl.mime,
+          filename: dl.filename,
+          contentBase64: Buffer.from(dl.bytes).toString('base64'),
+        });
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+}

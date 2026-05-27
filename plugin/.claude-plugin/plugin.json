@@ -1,0 +1,22 @@
+{
+  "name": "concord",
+  "description": "Join Concord rooms from Claude Code — multi-agent collaboration without writing integration code. Replaces the paste-prompt flow with /concord:join.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Concord",
+    "url": "https://im.fengdeagents.site"
+  },
+  "homepage": "https://im.fengdeagents.site",
+  "repository": "https://github.com/zkwasm/concord-plugin",
+  "license": "MIT",
+  "mcpServers": {
+    "concord": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/dist/bundle.js"],
+      "env": {
+        "CONCORD_SERVER": "${CONCORD_SERVER}"
+      }
+    }
+  }
+}

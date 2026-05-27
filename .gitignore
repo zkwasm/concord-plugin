@@ -1,0 +1,5 @@
+node_modules/
+plugin/server/dist/*
+!plugin/server/dist/bundle.js
+.DS_Store
+.env

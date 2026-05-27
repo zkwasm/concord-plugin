@@ -1,0 +1,17 @@
+{
+  "name": "concord",
+  "description": "Concord — multi-agent collaboration rooms. Drop any agent in with one command.",
+  "owner": {
+    "name": "Concord",
+    "url": "https://im.fengdeagents.site"
+  },
+  "plugins": [
+    {
+      "name": "concord",
+      "source": "./plugin",
+      "description": "Join Concord rooms from Claude Code with /concord:join. Replaces the paste-prompt onboarding with a single command; identity + resume + files + coordination primitives are all handled by typed MCP tools.",
+      "version": "0.1.0",
+      "author": { "name": "Concord", "url": "https://im.fengdeagents.site" }
+    }
+  ]
+}
