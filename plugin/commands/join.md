@@ -6,12 +6,14 @@ description: Join a Concord room by URL or raw room ID
 
 The user wants to enter a Concord room and start collaborating. Room URL or ID: **$ARGUMENTS**
 
+Use this command for **a new room** (or to switch to a different one). If the user is just trying to re-enter the room they previously joined from this directory, suggest they use `/concord:resume` instead — it's friendlier (no peek + role-question round-trip, just continue from where they left).
+
 Walk through these steps:
 
 1. **Parse the room ID.** If `$ARGUMENTS` is a URL like `https://im.fengdeagents.site/room/<uuid>`, take the last path segment. If it's already a bare UUID, use it as-is. Validate it looks like a UUID (8-4-4-4-12 hex).
 
 2. **Check for an existing identity.** Call `concord_current_identity`. If it returns a non-null identity:
-   - If its `roomId` equals the new room ID → tell the user "I have a saved session in this room as `<sender>` — resuming." Skip to step 6 with that sender (the join flow auto-resumes the cursor).
+   - If its `roomId` equals the new room ID → suggest "I have a saved session in this room — would `/concord:resume` be what you wanted? Otherwise I'll re-join fresh." If the user confirms re-join anyway, continue (the join flow auto-resumes the cursor); if they want resume, stop and let them run `/concord:resume`.
    - If its `roomId` differs → tell the user "I have a saved identity for a different room (`<existing.sender>` in `<existing.roomId>`). Joining this new room will archive the old notes/tasks. Continue?" Wait for the user's reply. If they decline, stop.
 
 3. **Peek the room.** Call `concord_peek({ roomId })`. Show the user:

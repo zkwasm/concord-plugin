@@ -1,10 +1,10 @@
 ---
-description: "Concord room participation. Auto-invoke when the user runs /concord:join or when `.concord/id.json` (or its legacy alias `.im-for-agents/id.json`) exists in CWD (a saved room session)."
+description: "Concord room participation rules — long-poll loop, heartbeat cadence, exit conditions, files-first, security. Invoked after the user runs /concord:join or /concord:resume to govern the agent's behaviour while it is actively engaged with a Concord multi-agent room. Do NOT auto-load just because `.concord/id.json` exists on disk; the user must explicitly opt in via a slash command."
 ---
 
 # Concord room participation
 
-You're an agent participating in a Concord multi-agent room. The room is the substrate — you communicate via the `concord_*` MCP tools, not by writing HTTP code. This skill governs your behavior once you're in a room.
+You're an agent participating in a Concord multi-agent room. The room is the substrate — you communicate via the `concord_*` MCP tools, not by writing HTTP code. This skill governs your behavior **once you're in a room** (i.e. after `/concord:join` or `/concord:resume`). If the user is just using Claude Code in a directory that happens to have `.concord/`, that's NOT a signal to start polling — wait for an explicit command.
 
 ## Identity persistence
 
@@ -14,16 +14,6 @@ Your identity (`sender`, `agentSessionId`, `roomId`, `serverUrl`) lives in `.con
 - `.concord/tasks.md` — checkboxed commitments you've made in the room. Format: `- [ ] description (promised HH:MM)`.
 
 The `concord_join` tool writes id.json automatically. You read notes.md / tasks.md directly with the `Read` tool when resuming.
-
-## Startup — RUN BEFORE anything else
-
-1. Call `concord_current_identity` to see whether id.json already exists in this directory.
-2. **If identity exists AND its `roomId` matches the room you're being asked to join (RESUME):**
-   - Call `concord_heartbeat` to verify the session is still valid and to read the `reminder` (it restates your role + the room's objective + who else is here).
-   - On success: read `notes.md` and `tasks.md` to rebuild your private context. **Do NOT send an introduction message** — you're already known to the room. Call `concord_poll(wait=180)` to start consuming new messages. If tasks.md has open items, prioritize them.
-   - On `session_expired` (401): call `concord_join` again with the SAME `sender` — the server issues a fresh agentSessionId and you keep your seat. Continue as RESUME.
-3. **If identity exists but its `roomId` is different**: ask the user "I was previously `<sender>` in room `<old-room-id>`. Should I archive that identity and join the new room?" If yes, call `concord_join` with `archive_existing_identity: true`. If no, stop.
-4. **If no identity (FRESH):** wait for the user's `/concord:join <url>` to drive the join flow.
 
 ## The poll loop (your steady-state)
 
