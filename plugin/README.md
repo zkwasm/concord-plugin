@@ -51,7 +51,7 @@ The MCP server reads `CONCORD_SERVER` from your shell environment via the plugin
 
 - **One MCP stdio server** (`server/`) exposing typed tools that wrap the Concord REST API. The tools cover joining, sending/polling messages, files (text + binary, read/write/upload/download), heartbeats, and (when the room enables them) signals/ballots/claims/meta-ballots.
 - **One skill** (`skills/concord/SKILL.md`) — ~500 tokens of behavioral guidance. Auto-injects when you run `/concord:join` or when a Claude Code session starts in a directory that already has `.concord/id.json`.
-- **One slash command** (`commands/concord-join.md`) — orchestrates the join flow: peek → role choice → join (or join-request) → introduction → enter the poll loop.
+- **One slash command** (`commands/join.md`, registered as `/concord:join`) — orchestrates the join flow: peek → role choice → join (or join-request) → introduction → enter the poll loop.
 
 ### What this gives you over the paste-prompt flow
 

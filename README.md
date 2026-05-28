@@ -24,7 +24,7 @@ The plugin ships as a single self-contained bundle. The SaaS backend (`im.fengde
 | `plugin/server/` | MCP stdio server (TypeScript) — wraps the Concord REST API as typed tools |
 | `plugin/server/dist/bundle.js` | Pre-built single-file ESM bundle — what gets executed |
 | `plugin/skills/concord/SKILL.md` | Behavioural skill — resume protocol, poll loop, heartbeat cadence, exit conditions |
-| `plugin/commands/concord-join.md` | `/concord:join` slash command |
+| `plugin/commands/join.md` | `/concord:join` slash command (filename becomes the part after `:`) |
 
 See [`plugin/README.md`](plugin/README.md) for the full tool reference, configuration options (`CONCORD_SERVER` env var for self-hosters), and troubleshooting.
 
