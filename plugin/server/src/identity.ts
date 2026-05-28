@@ -25,6 +25,12 @@ export interface Identity {
   serverUrl: string;
   createdAt: string;
   lastUpdatedAt: string;
+  /**
+   * When true, concord_poll and concord_heartbeat refuse to call the
+   * server — agent stays "checked out" of the room without losing
+   * identity or notes. Set by /concord:stop, cleared by /concord:resume.
+   */
+  paused?: boolean;
 }
 
 const DIR = '.concord';
@@ -141,6 +147,25 @@ export function touchIdentity(cwd: string = process.cwd()): void {
   if (!id) return;
   id.lastUpdatedAt = new Date().toISOString();
   fs.writeFileSync(idP, JSON.stringify(id, null, 2) + '\n', 'utf8');
+}
+
+/**
+ * Set or clear the paused flag on the saved identity. Returns the
+ * updated identity, or null if no identity is saved.
+ *
+ * paused=true: poll/heartbeat refuse to talk to the server.
+ * paused=false: normal operation (also touches lastUpdatedAt).
+ */
+export function setPaused(paused: boolean, cwd: string = process.cwd()): Identity | null {
+  const dir = activeIdDir(cwd);
+  if (!dir) return null;
+  const idP = path.join(dir, ID_FILE);
+  const id = loadIdentity(cwd);
+  if (!id) return null;
+  id.paused = paused;
+  id.lastUpdatedAt = new Date().toISOString();
+  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + '\n', 'utf8');
+  return id;
 }
 
 /**

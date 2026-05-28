@@ -1,19 +1,19 @@
 /**
- * Lifecycle tools: peek, join, request-join, await-approval, plus a
- * read-only current-identity helper. These are the entry points the
- * /concord:join slash command orchestrates.
+ * Lifecycle tools: peek, join, request-join, await-approval, current
+ * identity, and set-paused. These are the entry points the
+ * /concord:{join,resume,stop} slash commands orchestrate.
  */
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
-import { loadIdentity, saveIdentity, archiveIdentity, type Identity } from '../identity.js';
+import { loadIdentity, saveIdentity, archiveIdentity, setPaused, type Identity } from '../identity.js';
 import { ok, err, fromError } from '../util.js';
 
 export function registerLifecycleTools(server: McpServer, client: ConcordClient): void {
   server.registerTool(
     'concord_current_identity',
     {
-      description: 'Return the identity (sender, roomId, serverUrl) saved in `.concord/id.json` in this directory, or null if none. Use this to decide whether to start a new join or resume an existing one.',
+      description: 'Return the identity (sender, roomId, serverUrl, paused) saved in `.concord/id.json` in this directory, or null if none. Use this to decide whether to start a new join or resume an existing one.',
       inputSchema: {},
     },
     async () => {
@@ -165,6 +165,23 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
       } catch (e) {
         return fromError(e);
       }
+    },
+  );
+
+  server.registerTool(
+    'concord_set_paused',
+    {
+      description: 'Pause or resume the current Concord session WITHOUT leaving the room. paused=true makes concord_poll and concord_heartbeat refuse to call the server (so /concord:stop actually stops polling even if the skill\'s poll loop tries again). paused=false restores normal operation. Used by /concord:stop and /concord:resume.',
+      inputSchema: {
+        paused: z.boolean().describe('true to pause, false to resume.'),
+      },
+    },
+    async ({ paused }) => {
+      const updated = setPaused(paused);
+      if (!updated) {
+        return err('No saved Concord session in this directory.', { code: 'no_identity' });
+      }
+      return ok({ paused: updated.paused === true, sender: updated.sender, roomId: updated.roomId });
     },
   );
 }

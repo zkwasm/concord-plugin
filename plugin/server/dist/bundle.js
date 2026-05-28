@@ -21313,6 +21313,17 @@ function touchIdentity(cwd = process.cwd()) {
   id.lastUpdatedAt = (/* @__PURE__ */ new Date()).toISOString();
   fs.writeFileSync(idP, JSON.stringify(id, null, 2) + "\n", "utf8");
 }
+function setPaused(paused, cwd = process.cwd()) {
+  const dir = activeIdDir(cwd);
+  if (!dir) return null;
+  const idP = path.join(dir, ID_FILE);
+  const id = loadIdentity(cwd);
+  if (!id) return null;
+  id.paused = paused;
+  id.lastUpdatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + "\n", "utf8");
+  return id;
+}
 function archiveIdentity(cwd = process.cwd()) {
   const src = activeIdDir(cwd);
   if (!src) return null;
@@ -21381,7 +21392,7 @@ function registerLifecycleTools(server, client) {
   server.registerTool(
     "concord_current_identity",
     {
-      description: "Return the identity (sender, roomId, serverUrl) saved in `.concord/id.json` in this directory, or null if none. Use this to decide whether to start a new join or resume an existing one.",
+      description: "Return the identity (sender, roomId, serverUrl, paused) saved in `.concord/id.json` in this directory, or null if none. Use this to decide whether to start a new join or resume an existing one.",
       inputSchema: {}
     },
     async () => {
@@ -21514,6 +21525,22 @@ function registerLifecycleTools(server, client) {
       }
     }
   );
+  server.registerTool(
+    "concord_set_paused",
+    {
+      description: "Pause or resume the current Concord session WITHOUT leaving the room. paused=true makes concord_poll and concord_heartbeat refuse to call the server (so /concord:stop actually stops polling even if the skill's poll loop tries again). paused=false restores normal operation. Used by /concord:stop and /concord:resume.",
+      inputSchema: {
+        paused: external_exports.boolean().describe("true to pause, false to resume.")
+      }
+    },
+    async ({ paused }) => {
+      const updated = setPaused(paused);
+      if (!updated) {
+        return err("No saved Concord session in this directory.", { code: "no_identity" });
+      }
+      return ok({ paused: updated.paused === true, sender: updated.sender, roomId: updated.roomId });
+    }
+  );
 }
 
 // src/tools/messaging.ts
@@ -21558,6 +21585,9 @@ function registerMessagingTools(server, client) {
     async ({ wait }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
+      if (identity.paused) {
+        return err("Polling is paused for this room. Run /concord:resume to come back.", { code: "paused" });
+      }
       const w = wait ?? 180;
       try {
         const res = await client.request({
@@ -21604,6 +21634,9 @@ function registerMessagingTools(server, client) {
     async () => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
+      if (identity.paused) {
+        return err("Heartbeat is paused for this room. Run /concord:resume to come back.", { code: "paused" });
+      }
       try {
         const res = await client.request({
           method: "POST",

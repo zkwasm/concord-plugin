@@ -1,14 +1,19 @@
 /**
  * Messaging tools: send, poll (long-poll), history, heartbeat.
  *
- * All read the ambient agentSessionId from `.im-for-agents/id.json` so
- * Claude doesn't have to thread it through every call.
+ * All read the ambient agentSessionId from `.concord/id.json` so Claude
+ * doesn't have to thread it through every call.
+ *
+ * poll and heartbeat additionally respect the `paused` flag in id.json:
+ * when set (via /concord:stop → concord_set_paused(true)), these refuse
+ * to call the server. This is the kill-switch that makes /concord:stop
+ * actually stop polling even when the skill is mid-loop.
  */
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
 import { touchIdentity } from '../identity.js';
-import { ok, requireIdentity, fromError } from '../util.js';
+import { ok, err, requireIdentity, fromError } from '../util.js';
 
 export function registerMessagingTools(server: McpServer, client: ConcordClient): void {
   server.registerTool(
@@ -52,6 +57,9 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
     async ({ wait }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
+      if (identity.paused) {
+        return err('Polling is paused for this room. Run /concord:resume to come back.', { code: 'paused' });
+      }
       const w = wait ?? 180;
       try {
         const res = await client.request({
@@ -100,6 +108,9 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
     async () => {
       const { identity, error } = requireIdentity();
       if (error) return error;
+      if (identity.paused) {
+        return err('Heartbeat is paused for this room. Run /concord:resume to come back.', { code: 'paused' });
+      }
       try {
         const res = await client.request({
           method: 'POST',

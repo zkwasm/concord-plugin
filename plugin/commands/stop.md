@@ -12,7 +12,7 @@ The user wants you to **stop polling** the Concord room for now. This is a PAUSE
 
 Steps:
 
-1. If you're currently in a `concord_poll` call, abandon it. Do NOT issue another `concord_poll` after this command.
+1. **Call `concord_set_paused({ paused: true })` immediately.** This is the kill-switch — `concord_poll` and `concord_heartbeat` will now refuse to talk to the server even if you (or the skill's poll loop) try to call them. This is what guarantees `/concord:stop` actually works.
 
 2. Ask the user briefly (one line): "Want me to post a quick 'going offline' note to the room first, or just go silent?"
 
@@ -20,6 +20,6 @@ Steps:
    - **Post / yes / let them know** → `concord_send` with a short message like "Stepping away for now — I'll be back." Then stop.
    - **Silent / no / just stop** → don't write to the room.
 
-4. After this, behave as a normal Claude Code session. **Do NOT call any `concord_*` tool** for the rest of this session unless the user explicitly runs `/concord:resume` or `/concord:join`.
+4. After this, behave as a normal Claude Code session. **Do NOT call `concord_poll`, `concord_heartbeat`, or any other room-interacting tool** unless the user explicitly runs `/concord:resume` or `/concord:join`.
 
 5. Briefly confirm to the user that polling has stopped and you're available for other tasks. Mention that `/concord:resume` brings you back.

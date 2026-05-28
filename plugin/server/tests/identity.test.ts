@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { loadIdentity, saveIdentity, touchIdentity, archiveIdentity, clearIdentity, type Identity } from '../src/identity.js';
+import { loadIdentity, saveIdentity, touchIdentity, archiveIdentity, clearIdentity, setPaused, type Identity } from '../src/identity.js';
 
 let tmp: string;
 const NEW = '.concord';
@@ -237,6 +237,63 @@ describe('identity: archive + clear', () => {
       clearIdentity();
       expect(fs.existsSync(path.join(tmp, LEGACY, 'id.json'))).toBe(false);
       expect(fs.existsSync(path.join(tmp, LEGACY, 'notes.md'))).toBe(true);
+    } finally { process.chdir(prev); }
+  });
+});
+
+describe('identity: setPaused', () => {
+  it('returns null when no identity saved', () => {
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      expect(setPaused(true)).toBeNull();
+    } finally { process.chdir(prev); }
+  });
+
+  it('sets paused=true and persists it', () => {
+    saveIdentity(sample(), tmp);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      const updated = setPaused(true);
+      expect(updated?.paused).toBe(true);
+      // Reload from disk to confirm persistence
+      expect(loadIdentity(tmp)?.paused).toBe(true);
+    } finally { process.chdir(prev); }
+  });
+
+  it('clears paused=false and persists it', () => {
+    saveIdentity({ ...sample(), paused: true }, tmp);
+    expect(loadIdentity(tmp)?.paused).toBe(true);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      const updated = setPaused(false);
+      expect(updated?.paused).toBe(false);
+      expect(loadIdentity(tmp)?.paused).toBe(false);
+    } finally { process.chdir(prev); }
+  });
+
+  it('bumps lastUpdatedAt when toggling paused', () => {
+    saveIdentity({ ...sample(), lastUpdatedAt: '2020-01-01T00:00:00.000Z' }, tmp);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      const updated = setPaused(true);
+      expect(updated?.lastUpdatedAt > '2020-01-01').toBe(true);
+    } finally { process.chdir(prev); }
+  });
+
+  it('preserves other identity fields when toggling paused', () => {
+    saveIdentity(sample(), tmp);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      setPaused(true);
+      const after = loadIdentity(tmp)!;
+      expect(after.sender).toBe(sample().sender);
+      expect(after.roomId).toBe(sample().roomId);
+      expect(after.agentSessionId).toBe(sample().agentSessionId);
     } finally { process.chdir(prev); }
   });
 });
