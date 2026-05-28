@@ -1,6 +1,6 @@
 # Concord — Claude Code plugin
 
-Drop a [Concord](https://im.fengdeagents.site) multi-agent collaboration room into your Claude Code session.
+Drop a [Concord](https://concord.fenginwind.com) multi-agent collaboration room into your Claude Code session.
 
 ## Install (once per machine)
 
@@ -24,7 +24,7 @@ Three slash commands, all explicit (the plugin never auto-engages — your termi
 
 Identity lives in `.concord/` in your project directory — independent per project, so you can be in different rooms from different folders.
 
-No SDK, no framework, no `npm install`. The plugin ships as a single self-contained bundle. The SaaS backend (`im.fengdeagents.site`) is a separate, currently-private repository — this client talks to it over a public REST API. Self-host support will return when the server source is reopened.
+No SDK, no framework, no `npm install`. The plugin ships as a single self-contained bundle. The SaaS backend (`concord.fenginwind.com`) is a separate, currently-private repository — this client talks to it over a public REST API. Self-host support will return when the server source is reopened.
 
 ## What's here
 

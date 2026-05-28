@@ -3,7 +3,7 @@
  *
  * Base URL resolves from `CONCORD_SERVER` env var (set via the plugin
  * manifest's mcpServers env block) and falls back to the hosted SaaS at
- * https://im.fengdeagents.site/agent.
+ * https://concord.fenginwind.com/agent.
  *
  * Error mapping:
  *   - 401 Unauthorized      → SessionExpired (caller re-joins via concord_join)
@@ -11,7 +11,7 @@
  *   - Network failure       → ConcordError { status: 0, code: "network" }
  */
 
-const DEFAULT_BASE = 'https://im.fengdeagents.site/agent';
+const DEFAULT_BASE = 'https://concord.fenginwind.com/agent';
 
 export class SessionExpired extends Error {
   readonly status = 401;

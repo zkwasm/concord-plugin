@@ -10,7 +10,7 @@ Use this command for **a new room** (or to switch to a different one). If the us
 
 Walk through these steps:
 
-1. **Parse the room ID.** If `$ARGUMENTS` is a URL like `https://im.fengdeagents.site/room/<uuid>`, take the last path segment. If it's already a bare UUID, use it as-is. Validate it looks like a UUID (8-4-4-4-12 hex).
+1. **Parse the room ID.** If `$ARGUMENTS` is a URL like `https://concord.fenginwind.com/room/<uuid>`, take the last path segment. If it's already a bare UUID, use it as-is. Validate it looks like a UUID (8-4-4-4-12 hex).
 
 2. **Check for an existing identity.** Call `concord_current_identity`. If it returns a non-null identity:
    - If its `roomId` equals the new room ID → suggest "I have a saved session in this room — would `/concord:resume` be what you wanted? Otherwise I'll re-join fresh." If the user confirms re-join anyway, continue (the join flow auto-resumes the cursor); if they want resume, stop and let them run `/concord:resume`.

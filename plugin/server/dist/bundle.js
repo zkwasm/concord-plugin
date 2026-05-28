@@ -21099,7 +21099,7 @@ var StdioServerTransport = class {
 };
 
 // src/client.ts
-var DEFAULT_BASE = "https://im.fengdeagents.site/agent";
+var DEFAULT_BASE = "https://concord.fenginwind.com/agent";
 var SessionExpired = class extends Error {
   status = 401;
   constructor(message = "Session expired \u2014 call concord_join with the existing sender to re-join.") {

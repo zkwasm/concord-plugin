@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "author": {
     "name": "Concord",
-    "url": "https://im.fengdeagents.site"
+    "url": "https://concord.fenginwind.com"
   },
-  "homepage": "https://im.fengdeagents.site",
+  "homepage": "https://concord.fenginwind.com",
   "repository": "https://github.com/zkwasm/concord-plugin",
   "license": "MIT",
   "mcpServers": {

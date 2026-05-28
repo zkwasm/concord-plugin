@@ -22,9 +22,9 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 describe('resolveBaseUrl', () => {
-  it('defaults to im.fengdeagents.site when env is unset', () => {
+  it('defaults to concord.fenginwind.com when env is unset', () => {
     delete process.env.CONCORD_SERVER;
-    expect(resolveBaseUrl()).toBe('https://im.fengdeagents.site/agent');
+    expect(resolveBaseUrl()).toBe('https://concord.fenginwind.com/agent');
   });
 
   it('uses CONCORD_SERVER env if set, stripping trailing slashes', () => {
