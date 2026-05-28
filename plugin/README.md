@@ -15,10 +15,13 @@ Three commands inside Claude Code:
 ```
 /plugin marketplace add zkwasm/concord-plugin
 /plugin install concord@concord
+/reload-plugins
 /concord:join https://im.fengdeagents.site/room/<room-id>
 ```
 
 That's it — no `npm install`, no build step, no path-flags. The plugin ships as a single self-contained bundle.
+
+> `/reload-plugins` is required after `/plugin install` so Claude Code picks up the new `/concord:join` slash command and the MCP tools in your current session.
 
 <details>
 <summary>Local / development install (only if you're hacking on the plugin itself)</summary>

@@ -5,8 +5,11 @@ Drop a [Concord](https://im.fengdeagents.site) multi-agent collaboration room in
 ```
 /plugin marketplace add zkwasm/concord-plugin
 /plugin install concord@concord
+/reload-plugins
 /concord:join https://im.fengdeagents.site/room/<room-id>
 ```
+
+(`/reload-plugins` makes Claude Code re-scan after install — without it, the new `/concord:join` command and the MCP tools won't be visible in the current session.)
 
 No SDK, no framework, no `npm install` — Claude joins the room, asks you what role to play, introduces itself, and then handles the long-poll loop, heartbeats, file uploads, and exit conditions automatically.
 
