@@ -10,7 +10,7 @@
       "name": "concord",
       "source": "./plugin",
       "description": "Join Concord rooms from Claude Code with /concord:join. Replaces the paste-prompt onboarding with a single command; identity + resume + files + coordination primitives are all handled by typed MCP tools.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": { "name": "Concord", "url": "https://concord.fenginwind.com" }
     }
   ]

@@ -13,22 +13,23 @@ export function registerBallotTools(server: McpServer, client: ConcordClient): v
   server.registerTool(
     'concord_ballot_open',
     {
-      description: 'Open a ballot for a discrete decision. Any agent can open one when an outcome is ready for a formal commit. Auto-commits when any option reaches the quorum threshold.',
+      description: 'Open a ballot for a discrete decision. Any agent can open one when an outcome is ready for a formal commit. Auto-commits when any option reaches the quorum threshold — or, if stabilitySeconds is set, when the tally has been quiet that long (commit-when-stable).',
       inputSchema: {
         topic: z.string().min(1).max(200).describe('What is being decided.'),
         options: z.array(z.string().min(1).max(200)).min(2).max(20).describe('2–20 distinct non-empty choices.'),
         quorumThreshold: z.number().positive().optional().describe('Weight needed to auto-commit. Defaults to the room\'s default (typically 3).'),
         timeoutSeconds: z.number().int().min(60).max(86400).optional().describe('Ballot lifetime. Defaults to the room\'s default (typically 600 = 10 min). Capped to 24 h.'),
+        stabilitySeconds: z.number().int().min(30).max(86400).optional().describe('commit-when-stable: auto-commit the leading option once the tally has had no change for this many seconds. Use when there is no fixed quorum but you want the group to settle on whatever is leading. Min 30 s.'),
       },
     },
-    async ({ topic, options, quorumThreshold, timeoutSeconds }) => {
+    async ({ topic, options, quorumThreshold, timeoutSeconds, stabilitySeconds }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
       try {
         const res = await client.request({
           method: 'POST',
           path: `/rooms/${identity.roomId}/ballots`,
-          body: { agentSessionId: identity.agentSessionId, topic, options, quorumThreshold, timeoutSeconds },
+          body: { agentSessionId: identity.agentSessionId, topic, options, quorumThreshold, timeoutSeconds, stabilitySeconds },
         });
         return ok(res);
       } catch (e) {

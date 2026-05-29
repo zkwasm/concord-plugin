@@ -22145,22 +22145,23 @@ function registerBallotTools(server, client) {
   server.registerTool(
     "concord_ballot_open",
     {
-      description: "Open a ballot for a discrete decision. Any agent can open one when an outcome is ready for a formal commit. Auto-commits when any option reaches the quorum threshold.",
+      description: "Open a ballot for a discrete decision. Any agent can open one when an outcome is ready for a formal commit. Auto-commits when any option reaches the quorum threshold \u2014 or, if stabilitySeconds is set, when the tally has been quiet that long (commit-when-stable).",
       inputSchema: {
         topic: external_exports.string().min(1).max(200).describe("What is being decided."),
         options: external_exports.array(external_exports.string().min(1).max(200)).min(2).max(20).describe("2\u201320 distinct non-empty choices."),
         quorumThreshold: external_exports.number().positive().optional().describe("Weight needed to auto-commit. Defaults to the room's default (typically 3)."),
-        timeoutSeconds: external_exports.number().int().min(60).max(86400).optional().describe("Ballot lifetime. Defaults to the room's default (typically 600 = 10 min). Capped to 24 h.")
+        timeoutSeconds: external_exports.number().int().min(60).max(86400).optional().describe("Ballot lifetime. Defaults to the room's default (typically 600 = 10 min). Capped to 24 h."),
+        stabilitySeconds: external_exports.number().int().min(30).max(86400).optional().describe("commit-when-stable: auto-commit the leading option once the tally has had no change for this many seconds. Use when there is no fixed quorum but you want the group to settle on whatever is leading. Min 30 s.")
       }
     },
-    async ({ topic, options, quorumThreshold, timeoutSeconds }) => {
+    async ({ topic, options, quorumThreshold, timeoutSeconds, stabilitySeconds }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
       try {
         const res = await client.request({
           method: "POST",
           path: `/rooms/${identity.roomId}/ballots`,
-          body: { agentSessionId: identity.agentSessionId, topic, options, quorumThreshold, timeoutSeconds }
+          body: { agentSessionId: identity.agentSessionId, topic, options, quorumThreshold, timeoutSeconds, stabilitySeconds }
         });
         return ok(res);
       } catch (e) {
@@ -22275,6 +22276,31 @@ function registerClaimTools(server, client) {
           method: "DELETE",
           path: `/rooms/${identity.roomId}/claims/${encodeURIComponent(slot)}`,
           body: { agentSessionId: identity.agentSessionId }
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    }
+  );
+  server.registerTool(
+    "concord_handoff",
+    {
+      description: "Hand a slot you currently hold directly to a successor agent \u2014 atomic transfer, the slot never goes free (no race where a third agent grabs it in between). 409 not_owner if you are not the current holder; 404 no_claim if the slot is unheld/expired. Use when passing a role to whoever takes over.",
+      inputSchema: {
+        slot: external_exports.string().min(1).max(120).describe("The slot you currently hold."),
+        to: external_exports.string().min(1).max(100).describe("The successor agent name (their sender)."),
+        expiresInSeconds: external_exports.number().int().min(60).max(86400).optional().describe("TTL for the transferred claim. Default 1800 (30 min).")
+      }
+    },
+    async ({ slot, to, expiresInSeconds }) => {
+      const { identity, error: error2 } = requireIdentity();
+      if (error2) return error2;
+      try {
+        const res = await client.request({
+          method: "POST",
+          path: `/rooms/${identity.roomId}/claims/${encodeURIComponent(slot)}/handoff`,
+          body: { agentSessionId: identity.agentSessionId, to, expiresInSeconds }
         });
         return ok(res);
       } catch (e) {

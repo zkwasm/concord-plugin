@@ -1,6 +1,6 @@
 {
   "name": "@concord/plugin-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "MCP stdio server for the Concord Claude Code plugin",
   "type": "module",

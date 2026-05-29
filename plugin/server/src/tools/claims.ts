@@ -62,6 +62,32 @@ export function registerClaimTools(server: McpServer, client: ConcordClient): vo
   );
 
   server.registerTool(
+    'concord_handoff',
+    {
+      description: 'Hand a slot you currently hold directly to a successor agent — atomic transfer, the slot never goes free (no race where a third agent grabs it in between). 409 not_owner if you are not the current holder; 404 no_claim if the slot is unheld/expired. Use when passing a role to whoever takes over.',
+      inputSchema: {
+        slot: z.string().min(1).max(120).describe('The slot you currently hold.'),
+        to: z.string().min(1).max(100).describe('The successor agent name (their sender).'),
+        expiresInSeconds: z.number().int().min(60).max(86400).optional().describe('TTL for the transferred claim. Default 1800 (30 min).'),
+      },
+    },
+    async ({ slot, to, expiresInSeconds }) => {
+      const { identity, error } = requireIdentity();
+      if (error) return error;
+      try {
+        const res = await client.request({
+          method: 'POST',
+          path: `/rooms/${identity.roomId}/claims/${encodeURIComponent(slot)}/handoff`,
+          body: { agentSessionId: identity.agentSessionId, to, expiresInSeconds },
+        });
+        return ok(res);
+      } catch (e) {
+        return fromError(e);
+      }
+    },
+  );
+
+  server.registerTool(
     'concord_claims_list',
     {
       description: 'List all active (unexpired) claims in the room with their slot, claimant, and expiry. Call BEFORE starting work to avoid duplicating a claimed role.',
