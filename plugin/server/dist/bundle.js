@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path3) {
-      let input = path3;
+    function removeDotSegments(path4) {
+      let input = path4;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3479,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path3, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
+        const [path4, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6873,12 +6873,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs3, exportName) {
+    function addFormats(ajv, list, fs4, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs3[f]);
+        ajv.addFormat(f, fs4[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7364,8 +7364,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path4, errorMaps, issueData } = params;
+  const fullPath = [...path4, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7481,11 +7481,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path4, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path4;
     this._key = key;
   }
   get path() {
@@ -11122,10 +11122,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11445,11 +11445,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path3, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -21142,8 +21142,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** multipart/form-data upload. `extraFields` are sent as form fields alongside the file. */
-  async upload(path3, fileName, bytes, mime, extraFields) {
-    const url = this.urlFor(path3);
+  async upload(path4, fileName, bytes, mime, extraFields) {
+    const url = this.urlFor(path4);
     const fd = new FormData();
     for (const [k, v] of Object.entries(extraFields)) fd.append(k, v);
     fd.append("file", new Blob([bytes], { type: mime }), fileName);
@@ -21151,8 +21151,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** Binary download. Returns raw bytes plus the suggested filename + mime. */
-  async download(path3, query) {
-    const url = this.urlFor(path3, query);
+  async download(path4, query) {
+    const url = this.urlFor(path4, query);
     const res = await this.doFetch(url, { method: "GET" });
     if (!res.ok) await this.throwHttpError(res);
     const buf = new Uint8Array(await res.arrayBuffer());
@@ -21160,11 +21160,12 @@ var ConcordClient = class {
     const cd = res.headers.get("content-disposition") ?? "";
     const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
     const filename = match ? decodeURIComponent(match[1]) : "download.bin";
-    return { bytes: buf, mime, filename };
+    const enc = res.headers.get("x-concord-enc") === "1";
+    return { bytes: buf, mime, filename, enc };
   }
   // ── internals ──────────────────────────────────────────────────────────
-  urlFor(path3, query) {
-    let url = this.baseUrl + (path3.startsWith("/") ? path3 : `/${path3}`);
+  urlFor(path4, query) {
+    let url = this.baseUrl + (path4.startsWith("/") ? path4 : `/${path4}`);
     if (query) {
       const qs = new URLSearchParams();
       for (const [k, v] of Object.entries(query)) {
@@ -21350,6 +21351,118 @@ function ensureGitignored(cwd) {
   fs.writeFileSync(giPath, content + line + "\n", "utf8");
 }
 
+// src/crypto.ts
+import crypto from "node:crypto";
+import fs2 from "node:fs";
+import os from "node:os";
+import path2 from "node:path";
+var KEY_FILE = "room_ed25519";
+var HKDF_INFO = "concord-content-v1";
+var BLOB_PREFIX = "e1:";
+function keyDir() {
+  return process.env.CONCORD_KEY_DIR?.trim() || path2.join(os.homedir(), ".concord", "keys");
+}
+function privateKeyPath() {
+  return path2.join(keyDir(), KEY_FILE);
+}
+function roomKeyPath(roomId) {
+  return path2.join(keyDir(), roomId);
+}
+function loadPrivateKeyAt(p) {
+  try {
+    if (!fs2.existsSync(p)) return null;
+    const key = crypto.createPrivateKey(fs2.readFileSync(p, "utf8"));
+    return key.asymmetricKeyType === "ed25519" ? key : null;
+  } catch {
+    return null;
+  }
+}
+function loadPrivateKey() {
+  return loadPrivateKeyAt(privateKeyPath());
+}
+function publicKeyMatches(priv, pubPem) {
+  try {
+    const a = crypto.createPublicKey(priv).export({ type: "spki", format: "der" });
+    const b = crypto.createPublicKey(pubPem).export({ type: "spki", format: "der" });
+    return Buffer.from(a).equals(Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
+function findRoomKey(roomId, roomPubkeyPem) {
+  for (const p of [roomKeyPath(roomId), privateKeyPath()]) {
+    const key = loadPrivateKeyAt(p);
+    if (key && publicKeyMatches(key, roomPubkeyPem)) return { key, path: p };
+  }
+  return null;
+}
+function signChallenge(challenge, key) {
+  return crypto.sign(null, Buffer.from(challenge, "utf8"), key).toString("base64");
+}
+function deriveContentKey(key) {
+  const jwk = key.export({ format: "jwk" });
+  if (!jwk.d) throw new Error("private key has no seed (not an Ed25519 key?)");
+  const seed = Buffer.from(jwk.d, "base64url");
+  const derived = crypto.hkdfSync("sha256", seed, Buffer.alloc(0), Buffer.from(HKDF_INFO, "utf8"), 32);
+  return Buffer.from(derived);
+}
+function encrypt(plaintext, contentKey) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", contentKey, iv);
+  const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return BLOB_PREFIX + Buffer.concat([iv, tag, ct]).toString("base64");
+}
+function encryptBytes(plain, contentKey) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", contentKey, iv);
+  const ct = Buffer.concat([cipher.update(plain), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, ct]);
+}
+function decryptBytes(blob, contentKey) {
+  const iv = blob.subarray(0, 12);
+  const tag = blob.subarray(12, 28);
+  const ct = blob.subarray(28);
+  const d = crypto.createDecipheriv("aes-256-gcm", contentKey, iv);
+  d.setAuthTag(tag);
+  return Buffer.concat([d.update(ct), d.final()]);
+}
+function isCiphertext(s) {
+  return typeof s === "string" && s.startsWith(BLOB_PREFIX);
+}
+function decrypt(blob, contentKey) {
+  if (!blob.startsWith(BLOB_PREFIX)) throw new Error("not a Concord ciphertext envelope");
+  const raw = Buffer.from(blob.slice(BLOB_PREFIX.length), "base64");
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const ct = raw.subarray(28);
+  const d = crypto.createDecipheriv("aes-256-gcm", contentKey, iv);
+  d.setAuthTag(tag);
+  return Buffer.concat([d.update(ct), d.final()]).toString("utf8");
+}
+function decryptResponseMessages(res, contentKey) {
+  if (!res || typeof res !== "object") return;
+  const obj = res;
+  const decryptOne = (m) => {
+    if (!m || typeof m !== "object") return;
+    const msg = m;
+    if (msg.enc === true && typeof msg.content === "string") {
+      try {
+        msg.content = decrypt(msg.content, contentKey);
+        msg.enc = false;
+      } catch {
+        msg.content = "[could not decrypt \u2014 wrong or missing room key]";
+      }
+    }
+  };
+  for (const field of ["message", "messages", "missedMessages", "pinnedMessages"]) {
+    const v = obj[field];
+    if (Array.isArray(v)) v.forEach(decryptOne);
+    else if (v) decryptOne(v);
+  }
+}
+
 // src/util.ts
 function ok(structured) {
   return {
@@ -21440,9 +21553,29 @@ function registerLifecycleTools(server, client) {
             );
           }
         }
-        const body = { sender };
+        const info = await client.request({ method: "GET", path: `/rooms/${roomId}/info` });
+        const e2ee = info.e2ee === true;
+        let contentKey;
+        let resolvedKeyPath;
+        const e2eeBody = {};
+        if (e2ee) {
+          const found = info.e2eePubkey ? findRoomKey(roomId, info.e2eePubkey) : null;
+          if (!found) {
+            return err(
+              `This room is end-to-end encrypted, but no matching key was found. Place the room's shared private key at ${roomKeyPath(roomId)} (per-room key) or ${privateKeyPath()} (your account key), then retry.`,
+              { code: "e2ee_key_missing", roomKeyPath: roomKeyPath(roomId), accountKeyPath: privateKeyPath() }
+            );
+          }
+          resolvedKeyPath = found.path;
+          contentKey = deriveContentKey(found.key);
+          const ch = await client.request({ method: "GET", path: `/rooms/${roomId}/challenge` });
+          e2eeBody.challenge = ch.challenge;
+          e2eeBody.signature = signChallenge(ch.challenge, found.key);
+        }
+        const body = { sender, ...e2eeBody };
         if (existing && existing.roomId === roomId) body.agentSessionId = existing.agentSessionId;
         const res = await client.request({ method: "POST", path: `/rooms/${roomId}/join`, body });
+        if (e2ee && contentKey) decryptResponseMessages(res, contentKey);
         const now = (/* @__PURE__ */ new Date()).toISOString();
         const identity = {
           sender,
@@ -21450,7 +21583,8 @@ function registerLifecycleTools(server, client) {
           roomId,
           serverUrl: client.baseUrl,
           createdAt: existing?.createdAt ?? now,
-          lastUpdatedAt: now
+          lastUpdatedAt: now,
+          ...e2ee ? { e2ee: true, keyPath: resolvedKeyPath } : {}
         };
         saveIdentity(identity);
         return ok({
@@ -21460,7 +21594,8 @@ function registerLifecycleTools(server, client) {
           agentSessionId: res.agentSessionId,
           agentIndex: res.agentIndex,
           identitySavedAt: identity.lastUpdatedAt,
-          resumed: !!existing
+          resumed: !!existing,
+          e2ee
         });
       } catch (e) {
         return fromError(e);
@@ -21544,6 +21679,14 @@ function registerLifecycleTools(server, client) {
 }
 
 // src/tools/messaging.ts
+function resolveContentKey(keyPath) {
+  const key = keyPath ? loadPrivateKeyAt(keyPath) : loadPrivateKey();
+  if (!key) {
+    const p = keyPath || privateKeyPath();
+    return { error: err(`This room is end-to-end encrypted but its key (${p}) is missing or unreadable. Restore the shared key file and retry.`, { code: "e2ee_key_missing", expectedPath: p }) };
+  }
+  return { contentKey: deriveContentKey(key) };
+}
 function registerMessagingTools(server, client) {
   server.registerTool(
     "concord_send",
@@ -21557,6 +21700,16 @@ function registerMessagingTools(server, client) {
     async ({ content, pin }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
+      let outContent = content;
+      let encFlag = false;
+      let contentKey;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey;
+        outContent = encrypt(content, contentKey);
+        encFlag = true;
+      }
       try {
         const res = await client.request({
           method: "POST",
@@ -21564,10 +21717,12 @@ function registerMessagingTools(server, client) {
           body: {
             sender: identity.sender,
             agentSessionId: identity.agentSessionId,
-            content,
-            pin: pin ?? false
+            content: outContent,
+            pin: pin ?? false,
+            enc: encFlag
           }
         });
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -21589,6 +21744,12 @@ function registerMessagingTools(server, client) {
         return err("Polling is paused for this room. Run /concord:resume to come back.", { code: "paused" });
       }
       const w = wait ?? 180;
+      let contentKey;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey;
+      }
       try {
         const res = await client.request({
           method: "GET",
@@ -21596,6 +21757,7 @@ function registerMessagingTools(server, client) {
           query: { session: identity.agentSessionId, wait: w },
           timeoutMs: (w + 30) * 1e3
         });
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -21613,12 +21775,19 @@ function registerMessagingTools(server, client) {
     async ({ limit }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
+      let contentKey;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey;
+      }
       try {
         const res = await client.request({
           method: "GET",
           path: `/rooms/${identity.roomId}/history`,
           query: { limit: limit ?? 50 }
         });
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -21653,8 +21822,16 @@ function registerMessagingTools(server, client) {
 }
 
 // src/tools/files.ts
-import fs2 from "node:fs";
-import path2 from "node:path";
+import fs3 from "node:fs";
+import path3 from "node:path";
+function resolveContentKey2(keyPath) {
+  const key = keyPath ? loadPrivateKeyAt(keyPath) : loadPrivateKey();
+  if (!key) {
+    const p = keyPath || privateKeyPath();
+    return { error: err(`This room is end-to-end encrypted but its key (${p}) is missing or unreadable. Restore the shared key file and retry.`, { code: "e2ee_key_missing", expectedPath: p }) };
+  }
+  return { contentKey: deriveContentKey(key) };
+}
 var EXT_MIME = {
   ".txt": "text/plain",
   ".md": "text/markdown",
@@ -21676,7 +21853,7 @@ var EXT_MIME = {
   ".ts": "application/typescript"
 };
 function mimeOf(filename) {
-  const ext = path2.extname(filename).toLowerCase();
+  const ext = path3.extname(filename).toLowerCase();
   return EXT_MIME[ext] ?? "application/octet-stream";
 }
 function registerFileTools(server, client) {
@@ -21719,6 +21896,15 @@ function registerFileTools(server, client) {
           path: `/rooms/${identity.roomId}/files/read`,
           query: { session: identity.agentSessionId, path: filePath, ref }
         });
+        if (identity.e2ee && res && typeof res.content === "string" && isCiphertext(res.content)) {
+          const k = resolveContentKey2(identity.keyPath);
+          if (k.error) return k.error;
+          try {
+            res.content = decrypt(res.content, k.contentKey);
+          } catch {
+            res.content = "[could not decrypt \u2014 wrong or missing room key]";
+          }
+        }
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -21737,11 +21923,19 @@ function registerFileTools(server, client) {
     async ({ path: filePath, content }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
+      let outContent = content;
+      let encFlag = false;
+      if (identity.e2ee) {
+        const k = resolveContentKey2(identity.keyPath);
+        if (k.error) return k.error;
+        outContent = encrypt(content, k.contentKey);
+        encFlag = true;
+      }
       try {
         const res = await client.request({
           method: "POST",
           path: `/rooms/${identity.roomId}/files/write`,
-          body: { agentSessionId: identity.agentSessionId, path: filePath, content }
+          body: { agentSessionId: identity.agentSessionId, path: filePath, content: outContent, enc: encFlag }
         });
         return ok(res);
       } catch (e) {
@@ -21806,20 +22000,28 @@ function registerFileTools(server, client) {
     async ({ localPath, remotePath }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
-      const resolved = path2.resolve(process.cwd(), localPath);
-      if (!fs2.existsSync(resolved)) {
+      const resolved = path3.resolve(process.cwd(), localPath);
+      if (!fs3.existsSync(resolved)) {
         return err(`Local file not found: ${resolved}`, { code: "local_file_not_found" });
       }
-      const bytes = fs2.readFileSync(resolved);
-      const filename = path2.basename(resolved);
+      const bytes = fs3.readFileSync(resolved);
+      const filename = path3.basename(resolved);
       const remote = remotePath ?? filename;
+      let outBytes = new Uint8Array(bytes);
+      const fields = { agentSessionId: identity.agentSessionId, path: remote };
+      if (identity.e2ee) {
+        const k = resolveContentKey2(identity.keyPath);
+        if (k.error) return k.error;
+        outBytes = new Uint8Array(encryptBytes(bytes, k.contentKey));
+        fields.enc = "true";
+      }
       try {
         const res = await client.upload(
           `/rooms/${identity.roomId}/files`,
           filename,
-          new Uint8Array(bytes),
+          outBytes,
           mimeOf(filename),
-          { agentSessionId: identity.agentSessionId, path: remote }
+          fields
         );
         return ok(res);
       } catch (e) {
@@ -21844,17 +22046,23 @@ function registerFileTools(server, client) {
           session: identity.agentSessionId,
           path: remotePath
         });
+        let bytes = dl.bytes;
+        if (dl.enc) {
+          const k = resolveContentKey2(identity.keyPath);
+          if (k.error) return k.error;
+          bytes = new Uint8Array(decryptBytes(Buffer.from(dl.bytes), k.contentKey));
+        }
         if (localPath) {
-          const resolved = path2.resolve(process.cwd(), localPath);
-          fs2.mkdirSync(path2.dirname(resolved), { recursive: true });
-          fs2.writeFileSync(resolved, dl.bytes);
-          return ok({ savedTo: resolved, bytes: dl.bytes.length, mime: dl.mime, filename: dl.filename });
+          const resolved = path3.resolve(process.cwd(), localPath);
+          fs3.mkdirSync(path3.dirname(resolved), { recursive: true });
+          fs3.writeFileSync(resolved, bytes);
+          return ok({ savedTo: resolved, bytes: bytes.length, mime: dl.mime, filename: dl.filename });
         }
         return ok({
-          bytes: dl.bytes.length,
+          bytes: bytes.length,
           mime: dl.mime,
           filename: dl.filename,
-          contentBase64: Buffer.from(dl.bytes).toString("base64")
+          contentBase64: Buffer.from(bytes).toString("base64")
         });
       } catch (e) {
         return fromError(e);

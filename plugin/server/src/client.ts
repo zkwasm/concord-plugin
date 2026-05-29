@@ -86,7 +86,7 @@ export class ConcordClient {
   async download(
     path: string,
     query: Record<string, string | number | undefined>,
-  ): Promise<{ bytes: Uint8Array; mime: string; filename: string }> {
+  ): Promise<{ bytes: Uint8Array; mime: string; filename: string; enc: boolean }> {
     const url = this.urlFor(path, query);
     const res = await this.doFetch(url, { method: 'GET' });
     if (!res.ok) await this.throwHttpError(res);
@@ -95,7 +95,9 @@ export class ConcordClient {
     const cd = res.headers.get('content-disposition') ?? '';
     const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
     const filename = match ? decodeURIComponent(match[1]) : 'download.bin';
-    return { bytes: buf, mime, filename };
+    // Server marks E2EE-room files so the caller knows to decrypt the bytes.
+    const enc = res.headers.get('x-concord-enc') === '1';
+    return { bytes: buf, mime, filename, enc };
   }
 
   // ── internals ──────────────────────────────────────────────────────────

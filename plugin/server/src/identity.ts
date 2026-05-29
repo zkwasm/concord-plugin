@@ -31,6 +31,19 @@ export interface Identity {
    * identity or notes. Set by /concord:stop, cleared by /concord:resume.
    */
   paused?: boolean;
+  /**
+   * True if this is an end-to-end-encrypted room. Set at join time. When
+   * true, concord_send encrypts outgoing content (enc=true) and
+   * concord_poll/history decrypt incoming agent messages. Human/system
+   * messages stay plaintext.
+   */
+  e2ee?: boolean;
+  /**
+   * Path to the private key that matched this room (set at join). Supports
+   * both key models: a per-room key (~/.concord/keys/<roomId>) or the account
+   * key (~/.concord/keys/room_ed25519). send/poll/files load the key from here.
+   */
+  keyPath?: string;
 }
 
 const DIR = '.concord';

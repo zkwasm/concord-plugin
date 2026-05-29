@@ -13,7 +13,19 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
+import { loadPrivateKey, loadPrivateKeyAt, deriveContentKey, encrypt, decrypt, isCiphertext, encryptBytes, decryptBytes, privateKeyPath } from '../crypto.js';
 import { ok, err, requireIdentity, fromError } from '../util.js';
+
+/** Resolve the AES content key for an E2EE room from the per-room keyPath
+ * recorded at join (falls back to the account key). Mirrors messaging.ts. */
+function resolveContentKey(keyPath?: string): { contentKey?: Buffer; error?: ReturnType<typeof err> } {
+  const key = keyPath ? loadPrivateKeyAt(keyPath) : loadPrivateKey();
+  if (!key) {
+    const p = keyPath || privateKeyPath();
+    return { error: err(`This room is end-to-end encrypted but its key (${p}) is missing or unreadable. Restore the shared key file and retry.`, { code: 'e2ee_key_missing', expectedPath: p }) };
+  }
+  return { contentKey: deriveContentKey(key) };
+}
 
 const EXT_MIME: Record<string, string> = {
   '.txt': 'text/plain',
@@ -77,11 +89,19 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
       const { identity, error } = requireIdentity();
       if (error) return error;
       try {
-        const res = await client.request({
+        const res = await client.request<{ content?: string }>({
           method: 'GET',
           path: `/rooms/${identity.roomId}/files/read`,
           query: { session: identity.agentSessionId, path: filePath, ref },
         });
+        // E2EE: agent-written text files are stored as ciphertext envelopes.
+        // Decrypt in place; a plaintext (human) file won't match isCiphertext.
+        if (identity.e2ee && res && typeof res.content === 'string' && isCiphertext(res.content)) {
+          const k = resolveContentKey(identity.keyPath);
+          if (k.error) return k.error;
+          try { res.content = decrypt(res.content, k.contentKey!); }
+          catch { res.content = '[could not decrypt — wrong or missing room key]'; }
+        }
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -101,11 +121,19 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
     async ({ path: filePath, content }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
+      let outContent = content;
+      let encFlag = false;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        outContent = encrypt(content, k.contentKey!);
+        encFlag = true;
+      }
       try {
         const res = await client.request({
           method: 'POST',
           path: `/rooms/${identity.roomId}/files/write`,
-          body: { agentSessionId: identity.agentSessionId, path: filePath, content },
+          body: { agentSessionId: identity.agentSessionId, path: filePath, content: outContent, enc: encFlag },
         });
         return ok(res);
       } catch (e) {
@@ -180,13 +208,21 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
       const bytes = fs.readFileSync(resolved);
       const filename = path.basename(resolved);
       const remote = remotePath ?? filename;
+      let outBytes = new Uint8Array(bytes);
+      const fields: Record<string, string> = { agentSessionId: identity.agentSessionId, path: remote };
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        outBytes = new Uint8Array(encryptBytes(bytes, k.contentKey!));
+        fields.enc = 'true';
+      }
       try {
         const res = await client.upload(
           `/rooms/${identity.roomId}/files`,
           filename,
-          new Uint8Array(bytes),
+          outBytes,
           mimeOf(filename),
-          { agentSessionId: identity.agentSessionId, path: remote },
+          fields,
         );
         return ok(res);
       } catch (e) {
@@ -212,17 +248,25 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
           session: identity.agentSessionId,
           path: remotePath,
         });
+        // E2EE: the server marks encrypted files via X-Concord-Enc; decrypt the
+        // bytes locally before saving/returning them.
+        let bytes = dl.bytes;
+        if (dl.enc) {
+          const k = resolveContentKey(identity.keyPath);
+          if (k.error) return k.error;
+          bytes = new Uint8Array(decryptBytes(Buffer.from(dl.bytes), k.contentKey!));
+        }
         if (localPath) {
           const resolved = path.resolve(process.cwd(), localPath);
           fs.mkdirSync(path.dirname(resolved), { recursive: true });
-          fs.writeFileSync(resolved, dl.bytes);
-          return ok({ savedTo: resolved, bytes: dl.bytes.length, mime: dl.mime, filename: dl.filename });
+          fs.writeFileSync(resolved, bytes);
+          return ok({ savedTo: resolved, bytes: bytes.length, mime: dl.mime, filename: dl.filename });
         }
         return ok({
-          bytes: dl.bytes.length,
+          bytes: bytes.length,
           mime: dl.mime,
           filename: dl.filename,
-          contentBase64: Buffer.from(dl.bytes).toString('base64'),
+          contentBase64: Buffer.from(bytes).toString('base64'),
         });
       } catch (e) {
         return fromError(e);

@@ -13,7 +13,19 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
 import { touchIdentity } from '../identity.js';
+import { loadPrivateKey, loadPrivateKeyAt, deriveContentKey, encrypt, decryptResponseMessages, privateKeyPath } from '../crypto.js';
 import { ok, err, requireIdentity, fromError } from '../util.js';
+
+/** Resolve the AES content key for an E2EE room from the per-room keyPath
+ * recorded at join (falls back to the account key). Error if the file is gone. */
+function resolveContentKey(keyPath?: string): { contentKey?: Buffer; error?: ReturnType<typeof err> } {
+  const key = keyPath ? loadPrivateKeyAt(keyPath) : loadPrivateKey();
+  if (!key) {
+    const p = keyPath || privateKeyPath();
+    return { error: err(`This room is end-to-end encrypted but its key (${p}) is missing or unreadable. Restore the shared key file and retry.`, { code: 'e2ee_key_missing', expectedPath: p }) };
+  }
+  return { contentKey: deriveContentKey(key) };
+}
 
 export function registerMessagingTools(server: McpServer, client: ConcordClient): void {
   server.registerTool(
@@ -28,6 +40,18 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
     async ({ content, pin }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
+      // In E2EE rooms, encrypt the body locally and flag enc=true. The server
+      // stores only ciphertext; other key-holding agents decrypt on receipt.
+      let outContent = content;
+      let encFlag = false;
+      let contentKey: Buffer | undefined;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey!;
+        outContent = encrypt(content, contentKey);
+        encFlag = true;
+      }
       try {
         const res = await client.request({
           method: 'POST',
@@ -35,10 +59,13 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
           body: {
             sender: identity.sender,
             agentSessionId: identity.agentSessionId,
-            content,
+            content: outContent,
             pin: pin ?? false,
+            enc: encFlag,
           },
         });
+        // Decrypt any missedMessages the server returned alongside our send.
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -61,6 +88,12 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
         return err('Polling is paused for this room. Run /concord:resume to come back.', { code: 'paused' });
       }
       const w = wait ?? 180;
+      let contentKey: Buffer | undefined;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey!;
+      }
       try {
         const res = await client.request({
           method: 'GET',
@@ -68,6 +101,7 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
           query: { session: identity.agentSessionId, wait: w },
           timeoutMs: (w + 30) * 1000,
         });
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);
@@ -86,12 +120,19 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
     async ({ limit }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
+      let contentKey: Buffer | undefined;
+      if (identity.e2ee) {
+        const k = resolveContentKey(identity.keyPath);
+        if (k.error) return k.error;
+        contentKey = k.contentKey!;
+      }
       try {
         const res = await client.request({
           method: 'GET',
           path: `/rooms/${identity.roomId}/history`,
           query: { limit: limit ?? 50 },
         });
+        if (contentKey) decryptResponseMessages(res, contentKey);
         return ok(res);
       } catch (e) {
         return fromError(e);

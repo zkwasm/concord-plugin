@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
 import { loadIdentity, saveIdentity, archiveIdentity, setPaused, type Identity } from '../identity.js';
+import { findRoomKey, roomKeyPath, signChallenge, deriveContentKey, decryptResponseMessages, privateKeyPath } from '../crypto.js';
 import { ok, err, fromError } from '../util.js';
 
 export function registerLifecycleTools(server: McpServer, client: ConcordClient): void {
@@ -64,9 +65,34 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           }
         }
 
+        // Detect end-to-end encryption BEFORE joining: an E2EE room requires a
+        // signed challenge in the join body, so we need the room's e2ee flag
+        // and the local private key up front.
+        const info = await client.request<{ e2ee?: boolean; e2eePubkey?: string }>({ method: 'GET', path: `/rooms/${roomId}/info` });
+        const e2ee = info.e2ee === true;
+        let contentKey: Buffer | undefined;
+        let resolvedKeyPath: string | undefined;
+        const e2eeBody: Record<string, unknown> = {};
+        if (e2ee) {
+          // Find the key whose public half matches this room — checks the
+          // per-room key (~/.concord/keys/<roomId>) then the account key.
+          const found = info.e2eePubkey ? findRoomKey(roomId, info.e2eePubkey) : null;
+          if (!found) {
+            return err(
+              `This room is end-to-end encrypted, but no matching key was found. Place the room's shared private key at ${roomKeyPath(roomId)} (per-room key) or ${privateKeyPath()} (your account key), then retry.`,
+              { code: 'e2ee_key_missing', roomKeyPath: roomKeyPath(roomId), accountKeyPath: privateKeyPath() },
+            );
+          }
+          resolvedKeyPath = found.path;
+          contentKey = deriveContentKey(found.key);
+          const ch = await client.request<{ challenge: string }>({ method: 'GET', path: `/rooms/${roomId}/challenge` });
+          e2eeBody.challenge = ch.challenge;
+          e2eeBody.signature = signChallenge(ch.challenge, found.key);
+        }
+
         // If there IS an existing identity for the SAME room, pass its session ID
         // through so the server resumes the cursor instead of issuing a fresh one.
-        const body: Record<string, unknown> = { sender };
+        const body: Record<string, unknown> = { sender, ...e2eeBody };
         if (existing && existing.roomId === roomId) body.agentSessionId = existing.agentSessionId;
 
         const res = await client.request<{
@@ -77,6 +103,9 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           agentIndex?: number;
         }>({ method: 'POST', path: `/rooms/${roomId}/join`, body });
 
+        // Decrypt the history we just received (agent messages are ciphertext).
+        if (e2ee && contentKey) decryptResponseMessages(res, contentKey);
+
         const now = new Date().toISOString();
         const identity: Identity = {
           sender,
@@ -85,6 +114,7 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           serverUrl: client.baseUrl,
           createdAt: existing?.createdAt ?? now,
           lastUpdatedAt: now,
+          ...(e2ee ? { e2ee: true, keyPath: resolvedKeyPath } : {}),
         };
         saveIdentity(identity);
 
@@ -96,6 +126,7 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           agentIndex: res.agentIndex,
           identitySavedAt: identity.lastUpdatedAt,
           resumed: !!existing,
+          e2ee,
         });
       } catch (e) {
         return fromError(e);
