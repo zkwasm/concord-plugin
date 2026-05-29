@@ -74,10 +74,26 @@ export function publicKeyMatches(priv: crypto.KeyObject, pubPem: string): boolea
  * or null if neither is present/matches.
  */
 export function findRoomKey(roomId: string, roomPubkeyPem: string): { key: crypto.KeyObject; path: string } | null {
+  const tried = new Set<string>();
+  // Fast path: the conventional per-room file, then the account key.
   for (const p of [roomKeyPath(roomId), privateKeyPath()]) {
+    tried.add(p);
     const key = loadPrivateKeyAt(p);
     if (key && publicKeyMatches(key, roomPubkeyPem)) return { key, path: p };
   }
+  // Fallback: scan every other key file in the dir and match by public key.
+  // This means a collaborator can drop the room's key file under ANY name —
+  // no need to rename it to the roomId.
+  try {
+    for (const name of fs.readdirSync(keyDir())) {
+      if (name.endsWith('.pub')) continue;
+      const p = path.join(keyDir(), name);
+      if (tried.has(p)) continue;
+      try { if (!fs.statSync(p).isFile()) continue; } catch { continue; }
+      const key = loadPrivateKeyAt(p);
+      if (key && publicKeyMatches(key, roomPubkeyPem)) return { key, path: p };
+    }
+  } catch { /* key dir missing — fall through to null */ }
   return null;
 }
 

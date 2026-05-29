@@ -21390,9 +21390,26 @@ function publicKeyMatches(priv, pubPem) {
   }
 }
 function findRoomKey(roomId, roomPubkeyPem) {
+  const tried = /* @__PURE__ */ new Set();
   for (const p of [roomKeyPath(roomId), privateKeyPath()]) {
+    tried.add(p);
     const key = loadPrivateKeyAt(p);
     if (key && publicKeyMatches(key, roomPubkeyPem)) return { key, path: p };
+  }
+  try {
+    for (const name of fs2.readdirSync(keyDir())) {
+      if (name.endsWith(".pub")) continue;
+      const p = path2.join(keyDir(), name);
+      if (tried.has(p)) continue;
+      try {
+        if (!fs2.statSync(p).isFile()) continue;
+      } catch {
+        continue;
+      }
+      const key = loadPrivateKeyAt(p);
+      if (key && publicKeyMatches(key, roomPubkeyPem)) return { key, path: p };
+    }
+  } catch {
   }
   return null;
 }

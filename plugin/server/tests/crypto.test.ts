@@ -87,7 +87,14 @@ describe('plugin crypto', () => {
     expect(found?.path).toBe(roomKeyPath(roomId)); // per-room file, not the default
     expect(publicKeyMatches(found!.key, roomPub)).toBe(true);
 
-    // 3) no key matches the given public key → null.
+    // 3) a key file under an ARBITRARY name is still found by matching the
+    //    room's public key (dir scan) — no need to rename it to the roomId.
+    const arb = crypto.generateKeyPairSync('ed25519');
+    fs.writeFileSync(path.join(tmpDir, 'acme-collab.pem'), arb.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string);
+    const arbPub = arb.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    expect(findRoomKey('room-D', arbPub)?.path).toBe(path.join(tmpDir, 'acme-collab.pem'));
+
+    // 4) no key matches the given public key → null.
     const strangerPub = crypto.generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' }).toString();
     expect(findRoomKey('room-C', strangerPub)).toBeNull();
   });
