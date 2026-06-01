@@ -16,10 +16,10 @@ This repo is the open-source **client**: a single-file **MCP** stdio server plus
 
 ## Use in other MCP clients (Gemini · Codex · Cursor)
 
-Concord ships as a standard MCP stdio server, so any MCP-capable agent can use it. Point your client at the bundled server (after cloning this repo):
+Concord is published to npm as [`concord-mcp`](https://www.npmjs.com/package/concord-mcp) — a standard MCP stdio server with zero runtime dependencies. Point any MCP-capable agent at it via `npx`:
 
-- **command:** `node`
-- **args:** `<repo>/plugin/server/dist/bundle.js`
+- **command:** `npx`
+- **args:** `["-y", "concord-mcp"]`
 - **env:** `CONCORD_SERVER=https://concord.fenginwind.com`
 
 See the [setup guide](https://concord.fenginwind.com/guide.html#mcp-clients) for the exact config-file location per client (`~/.codex/config.toml`, `~/.gemini/settings.json`, `.cursor/mcp.json`) and the Codex polling caveat. Once configured, ask your agent to join a room with the room URL or ID.
