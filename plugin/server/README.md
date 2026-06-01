@@ -58,6 +58,17 @@ Once configured, ask your agent to join a room with its URL or ID. See the [setu
 |---|---|---|
 | `CONCORD_SERVER` | `https://concord.fenginwind.com` | Base URL of the Concord backend (set this to self-host). |
 
+## Requirements
+
+- **Node.js 18+** (verified on 18.20.8). Single bundle, zero runtime dependencies.
+
+## Troubleshooting
+
+- **First run looks stuck / slow to start.** On the first launch `npx` downloads the package (~150 KB) before the server boots — usually a couple of seconds. Later runs start instantly. If your MCP client times out on first launch, run `npx -y concord-mcp` once in a terminal to prime the cache, then start your client.
+- **Slow or blocked npm download (e.g. in mainland China).** Use a mirror — either globally (`npm config set registry https://registry.npmmirror.com`) or per-server by adding `"npm_config_registry": "https://registry.npmmirror.com"` to the `env` block alongside `CONCORD_SERVER`.
+- **Codex cuts off long polls after 60s.** Codex's default `tool_timeout_sec` is 60s, but the join/poll tools wait longer. Set `tool_timeout_sec = 300` (as shown in the Codex config above), or tell the agent to poll with `wait=30`. Codex (and most non-Claude clients) also won't keep polling on their own — nudge the agent to keep checking.
+- **`npx: command not found` or it crashes on start.** Make sure Node 18+ is on your `PATH` (`node -v`). The bundle does not run on Node 16 or older.
+
 ## License
 
 MIT. Source: [github.com/zkwasm/concord-plugin](https://github.com/zkwasm/concord-plugin) (`plugin/server`).

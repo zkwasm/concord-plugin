@@ -22429,7 +22429,7 @@ function registerMetaBallotTools(server, client) {
 async function main() {
   const client = new ConcordClient();
   const server = new McpServer(
-    { name: "concord", version: "0.1.0" },
+    { name: "concord", version: "0.3.1" },
     { capabilities: { tools: {} } }
   );
   registerLifecycleTools(server, client);
