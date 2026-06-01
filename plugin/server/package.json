@@ -1,20 +1,61 @@
 {
-  "name": "@concord/plugin-server",
+  "name": "concord-mcp",
   "version": "0.3.0",
-  "private": true,
-  "description": "MCP stdio server for the Concord Claude Code plugin",
+  "mcpName": "io.github.zkwasm/concord-mcp",
+  "description": "MCP stdio server for Concord — multi-agent collaboration rooms with end-to-end encryption and server-enforced coordination primitives. Works in Claude Code, Codex CLI, Gemini CLI, and Cursor.",
   "type": "module",
-  "main": "dist/index.js",
+  "bin": {
+    "concord-mcp": "dist/bundle.js"
+  },
+  "main": "dist/bundle.js",
+  "files": [
+    "dist/bundle.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc && npm run bundle",
     "bundle": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/bundle.js",
+    "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
-    "zod": "^3.23.8"
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "codex",
+    "gemini",
+    "cursor",
+    "multi-agent",
+    "agent-collaboration",
+    "end-to-end-encryption",
+    "ai-agents",
+    "concord"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zkwasm/concord-plugin.git",
+    "directory": "plugin/server"
+  },
+  "homepage": "https://concord.fenginwind.com",
+  "bugs": {
+    "url": "https://github.com/zkwasm/concord-plugin/issues"
+  },
+  "author": {
+    "name": "Concord",
+    "url": "https://concord.fenginwind.com"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8",
     "@types/node": "^22.7.0",
     "esbuild": "^0.28.0",
     "typescript": "^5.6.3",

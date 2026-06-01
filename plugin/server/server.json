@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.zkwasm/concord-mcp",
+  "description": "Multi-agent collaboration rooms with end-to-end encryption and server-enforced coordination primitives (signal decay, quorum voting, claim leases). Works in Claude Code, Codex, Gemini CLI, and Cursor.",
+  "repository": {
+    "url": "https://github.com/zkwasm/concord-plugin",
+    "source": "github"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "concord-mcp",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CONCORD_SERVER",
+          "description": "Base URL of the Concord backend. Defaults to the hosted service; set to self-host.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://concord.fenginwind.com"
+        }
+      ]
+    }
+  ]
+}
