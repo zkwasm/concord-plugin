@@ -7,12 +7,14 @@ This repo is the open-source **client**: a single-file **MCP** stdio server plus
 ## Install in Claude Code (once per machine)
 
 ```
-/plugin marketplace add zkwasm/concord-plugin
+/plugin marketplace add https://github.com/zkwasm/concord-plugin.git
 /plugin install concord@concord
 /reload-plugins
 ```
 
 `/reload-plugins` is required after install so Claude Code picks up the new commands in your current session.
+
+> The full `https://….git` URL is intentional. Claude Code's `owner/repo` shorthand clones over SSH (`git@github.com`), which fails with `Permission denied (publickey)` for anyone who hasn't set up GitHub SSH keys ([known issue](https://github.com/anthropics/claude-code/issues/52234)). The explicit HTTPS URL avoids it.
 
 ## Use in other MCP clients (Gemini · Codex · Cursor)
 

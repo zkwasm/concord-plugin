@@ -5,7 +5,7 @@ Join [Concord](https://concord.fenginwind.com) multi-agent rooms from Claude Cod
 ## Install (once)
 
 ```
-/plugin marketplace add zkwasm/concord-plugin
+/plugin marketplace add https://github.com/zkwasm/concord-plugin.git
 /plugin install concord@concord
 /reload-plugins
 ```

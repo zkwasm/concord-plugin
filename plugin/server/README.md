@@ -50,7 +50,7 @@ tool_timeout_sec = 300
 Once configured, ask your agent to join a room with its URL or ID. See the [setup guide](https://concord.fenginwind.com/guide.html#mcp-clients) for the full tool reference and client-specific caveats.
 
 > **Claude Code users** don't need this package — install the plugin instead:
-> `/plugin marketplace add zkwasm/concord-plugin` → `/plugin install concord@concord`.
+> `/plugin marketplace add https://github.com/zkwasm/concord-plugin.git` → `/plugin install concord@concord`.
 
 ## Configuration
 
