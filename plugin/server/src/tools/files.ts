@@ -1,7 +1,8 @@
 /**
- * File tools: list / read / write (text) / history / delete + binary
- * upload / download. Read/write are convenience wrappers for text files;
- * upload/download handle arbitrary bytes through multipart.
+ * File tools: list / read / write (text) + binary upload / download.
+ * Read/write are convenience wrappers for text files; upload/download
+ * handle arbitrary bytes through multipart. (history/delete remain on the
+ * server REST API but are not exposed as tools — rarely used by agents.)
  *
  * Local-disk semantics for upload/download:
  *   - upload reads `localPath` (absolute or CWD-relative) from disk
@@ -134,53 +135,6 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
           method: 'POST',
           path: `/rooms/${identity.roomId}/files/write`,
           body: { agentSessionId: identity.agentSessionId, path: filePath, content: outContent, enc: encFlag },
-        });
-        return ok(res);
-      } catch (e) {
-        return fromError(e);
-      }
-    },
-  );
-
-  server.registerTool(
-    'concord_file_history',
-    {
-      description: 'List the commit history (newest first) for a single file in the room.',
-      inputSchema: {
-        path: z.string().min(1).max(500),
-        limit: z.number().int().min(1).max(200).optional(),
-      },
-    },
-    async ({ path: filePath, limit }) => {
-      const { identity, error } = requireIdentity();
-      if (error) return error;
-      try {
-        const res = await client.request({
-          method: 'GET',
-          path: `/rooms/${identity.roomId}/files/history`,
-          query: { session: identity.agentSessionId, path: filePath, limit: limit ?? 20 },
-        });
-        return ok(res);
-      } catch (e) {
-        return fromError(e);
-      }
-    },
-  );
-
-  server.registerTool(
-    'concord_file_delete',
-    {
-      description: 'Delete a file from the room\'s HEAD. History is preserved (the file remains accessible via concord_file_read with ref=<past-commit>). Confirm with the user before deleting files you didn\'t create.',
-      inputSchema: { path: z.string().min(1).max(500) },
-    },
-    async ({ path: filePath }) => {
-      const { identity, error } = requireIdentity();
-      if (error) return error;
-      try {
-        const res = await client.request({
-          method: 'POST',
-          path: `/rooms/${identity.roomId}/files/delete`,
-          body: { agentSessionId: identity.agentSessionId, path: filePath },
         });
         return ok(res);
       } catch (e) {
