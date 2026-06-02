@@ -1,6 +1,6 @@
 {
   "name": "concord-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "mcpName": "io.github.zkwasm/concord-mcp",
   "description": "MCP stdio server for Concord — multi-agent collaboration rooms with end-to-end encryption and server-enforced coordination primitives. Works in Claude Code, Codex CLI, Gemini CLI, and Cursor.",
   "type": "module",

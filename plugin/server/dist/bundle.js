@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path4) {
-      let input = path4;
+    function removeDotSegments(path5) {
+      let input = path5;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3479,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path4, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
+        const [path5, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6873,12 +6873,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs4, exportName) {
+    function addFormats(ajv, list, fs5, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs4[f]);
+        ajv.addFormat(f, fs5[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7364,8 +7364,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path4, errorMaps, issueData } = params;
-  const fullPath = [...path4, ...issueData.path || []];
+  const { data, path: path5, errorMaps, issueData } = params;
+  const fullPath = [...path5, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7481,11 +7481,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path4, key) {
+  constructor(parent, value, path5, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path4;
+    this._path = path5;
     this._key = key;
   }
   get path() {
@@ -11122,10 +11122,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path4) {
-  if (!path4)
+function getElementAtPath(obj, path5) {
+  if (!path5)
     return obj;
-  return path4.reduce((acc, key) => acc?.[key], obj);
+  return path5.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11445,11 +11445,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path4, issues) {
+function prefixIssues(path5, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path4);
+    iss.path.unshift(path5);
     return iss;
   });
 }
@@ -21133,7 +21133,7 @@ var ConcordClient = class {
   /** JSON request → parsed JSON response. Throws SessionExpired / ConcordError. */
   async request(opts) {
     const url = this.urlFor(opts.path, opts.query);
-    const init = { method: opts.method, headers: {} };
+    const init = { method: opts.method, headers: { ...opts.headers ?? {} } };
     if (opts.body !== void 0) {
       init.body = JSON.stringify(opts.body);
       init.headers["Content-Type"] = "application/json";
@@ -21142,8 +21142,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** multipart/form-data upload. `extraFields` are sent as form fields alongside the file. */
-  async upload(path4, fileName, bytes, mime, extraFields) {
-    const url = this.urlFor(path4);
+  async upload(path5, fileName, bytes, mime, extraFields) {
+    const url = this.urlFor(path5);
     const fd = new FormData();
     for (const [k, v] of Object.entries(extraFields)) fd.append(k, v);
     fd.append("file", new Blob([bytes], { type: mime }), fileName);
@@ -21151,8 +21151,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** Binary download. Returns raw bytes plus the suggested filename + mime. */
-  async download(path4, query) {
-    const url = this.urlFor(path4, query);
+  async download(path5, query) {
+    const url = this.urlFor(path5, query);
     const res = await this.doFetch(url, { method: "GET" });
     if (!res.ok) await this.throwHttpError(res);
     const buf = new Uint8Array(await res.arrayBuffer());
@@ -21164,8 +21164,8 @@ var ConcordClient = class {
     return { bytes: buf, mime, filename, enc };
   }
   // ── internals ──────────────────────────────────────────────────────────
-  urlFor(path4, query) {
-    let url = this.baseUrl + (path4.startsWith("/") ? path4 : `/${path4}`);
+  urlFor(path5, query) {
+    let url = this.baseUrl + (path5.startsWith("/") ? path5 : `/${path5}`);
     if (query) {
       const qs = new URLSearchParams();
       for (const [k, v] of Object.entries(query)) {
@@ -21711,10 +21711,11 @@ function registerMessagingTools(server, client) {
       description: "Post a message to the room you joined. Optionally pin it (use sparingly \u2014 for durable decisions, API contracts, action items). Returns the created message plus any `missedMessages` that arrived while you were working \u2014 always process those before continuing the poll loop.",
       inputSchema: {
         content: external_exports.string().min(1).max(5e4).describe("Message text. For anything over ~500 chars or any binary, use concord_file_write / concord_file_upload instead \u2014 files are cheaper than chat for big content."),
-        pin: external_exports.boolean().optional().describe("Default false. Set true to pin the message as a durable room decision.")
+        pin: external_exports.boolean().optional().describe("Default false. Set true to pin the message as a durable room decision."),
+        level: external_exports.enum(["info", "milestone", "blocked", "needs_decision", "done"]).optional().describe("Report-room status level. In a report room use: milestone (a step completed), blocked / needs_decision (these PING the human \u2014 be specific and actionable, e.g. give the options), done (finished). Defaults to info; ignored in non-report rooms.")
       }
     },
-    async ({ content, pin }) => {
+    async ({ content, pin, level }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
       let outContent = content;
@@ -21736,7 +21737,8 @@ function registerMessagingTools(server, client) {
             agentSessionId: identity.agentSessionId,
             content: outContent,
             pin: pin ?? false,
-            enc: encFlag
+            enc: encFlag,
+            level
           }
         });
         if (contentKey) decryptResponseMessages(res, contentKey);
@@ -22043,16 +22045,146 @@ function registerFileTools(server, client) {
   );
 }
 
+// src/tools/report.ts
+import os2 from "node:os";
+import fs4 from "node:fs";
+import path4 from "node:path";
+function concordHome() {
+  const dir = path4.join(os2.homedir(), ".concord");
+  fs4.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+var tokenFile = () => path4.join(concordHome(), "report-token.json");
+var pendingFile = () => path4.join(concordHome(), "report-auth-pending.json");
+function readJson(p) {
+  try {
+    return JSON.parse(fs4.readFileSync(p, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function writeJson(p, v) {
+  fs4.writeFileSync(p, JSON.stringify(v, null, 2), { mode: 384 });
+}
+function removeFile(p) {
+  try {
+    fs4.unlinkSync(p);
+  } catch {
+  }
+}
+function registerReportTools(server, client) {
+  server.registerTool(
+    "concord_authorize",
+    {
+      description: 'Authorize this agent to create progress-report rooms for a human (one-time per machine). Device flow: the FIRST call returns a URL + short code \u2014 show them to the user and ask them to approve in their browser. Then call concord_authorize AGAIN to finish; it polls for the approval and stores the token. Repeat the "again" call until it reports authorized.',
+      inputSchema: {
+        client_name: external_exports.string().max(80).optional().describe(`Label shown on the approval screen and in the user's "Authorized agents" list, e.g. "claude-code@my-laptop".`)
+      }
+    },
+    async ({ client_name }) => {
+      if (readJson(tokenFile())?.token) {
+        return ok({ status: "already_authorized", message: "A report token is already stored. Call concord_report to create a report room." });
+      }
+      const pending = readJson(pendingFile());
+      if (!pending) {
+        try {
+          const r = await client.request({
+            method: "POST",
+            path: "/authorize/device",
+            body: { client_name: client_name ?? "" }
+          });
+          writeJson(pendingFile(), { deviceCode: r.device_code, userCode: r.user_code, verificationUri: r.verification_uri_complete, interval: r.interval });
+          return ok({
+            status: "pending_user_approval",
+            user_code: r.user_code,
+            approve_url: r.verification_uri_complete,
+            message: `Show the user this and wait: "Open ${r.verification_uri_complete} and click Approve (code ${r.user_code})." Then call concord_authorize again to finish.`
+          });
+        } catch (e) {
+          return fromError(e);
+        }
+      }
+      let lastCode = "authorization_pending";
+      for (let i = 0; i < 6; i++) {
+        try {
+          const r = await client.request({ method: "POST", path: "/authorize/token", body: { device_code: pending.deviceCode } });
+          if (r.access_token) {
+            writeJson(tokenFile(), { token: r.access_token, authorizedAt: (/* @__PURE__ */ new Date()).toISOString() });
+            removeFile(pendingFile());
+            return ok({ status: "authorized", message: "Authorized. Now call concord_report to create your report room." });
+          }
+        } catch (e) {
+          lastCode = e instanceof ConcordError ? e.code : "error";
+          if (lastCode === "access_denied") {
+            removeFile(pendingFile());
+            return err("The user denied the authorization.", { code: "access_denied" });
+          }
+          if (lastCode === "expired_token") {
+            removeFile(pendingFile());
+            return err("The authorization code expired. Call concord_authorize again to restart.", { code: "expired_token" });
+          }
+        }
+        await new Promise((res) => setTimeout(res, Math.max(1, pending.interval) * 1e3));
+      }
+      return ok({
+        status: "still_pending",
+        user_code: pending.userCode,
+        approve_url: pending.verificationUri,
+        message: `Still waiting for approval. Confirm the user approved at ${pending.verificationUri} (code ${pending.userCode}), then call concord_authorize again.`
+      });
+    }
+  );
+  server.registerTool(
+    "concord_report",
+    {
+      description: "Create a progress-report room (owned by the human who authorized you) and bind this directory to it. Requires a prior concord_authorize. After this, report with concord_send (set level: milestone / blocked / needs_decision / done) and read the human's replies with concord_poll.",
+      inputSchema: {
+        name: external_exports.string().min(1).max(160).describe('Short, human-meaningful title for what you are reporting on, e.g. "Auth module refactor". A \u{1F4CA} prefix is added automatically.'),
+        sender: external_exports.string().min(1).max(100).optional().describe('Your display name in the room. Defaults to "reporter".'),
+        purpose: external_exports.string().max(2e3).optional().describe("Optional one-line description of the task you are reporting on.")
+      }
+    },
+    async ({ name, sender, purpose }) => {
+      const tok = readJson(tokenFile());
+      if (!tok?.token) return err("Not authorized yet. Call concord_authorize first.", { code: "not_authorized" });
+      const who = sender ?? "reporter";
+      try {
+        const r = await client.request({
+          method: "POST",
+          path: "/report-rooms",
+          headers: { Authorization: `Bearer ${tok.token}` },
+          body: { name, sender: who, purpose }
+        });
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        const identity = { sender: who, agentSessionId: r.agentSessionId, roomId: r.room.id, serverUrl: client.baseUrl, createdAt: now, lastUpdatedAt: now };
+        saveIdentity(identity);
+        return ok({
+          room: r.room,
+          agentSessionId: r.agentSessionId,
+          message: "Report room created and bound to this directory. Report progress with concord_send (use the level field); read the human's replies with concord_poll."
+        });
+      } catch (e) {
+        if (e instanceof ConcordError && e.status === 401) {
+          removeFile(tokenFile());
+          return err("Your report token was rejected (revoked or expired). Call concord_authorize again.", { code: "report_token_invalid" });
+        }
+        return fromError(e);
+      }
+    }
+  );
+}
+
 // src/index.ts
 async function main() {
   const client = new ConcordClient();
   const server = new McpServer(
-    { name: "concord", version: "0.4.0" },
+    { name: "concord", version: "0.4.1" },
     { capabilities: { tools: {} } }
   );
   registerLifecycleTools(server, client);
   registerMessagingTools(server, client);
   registerFileTools(server, client);
+  registerReportTools(server, client);
   process.stderr.write(`[concord] starting against ${client.baseUrl}
 `);
   const transport = new StdioServerTransport();

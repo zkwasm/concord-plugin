@@ -12,18 +12,20 @@ import { ConcordClient } from './client.js';
 import { registerLifecycleTools } from './tools/lifecycle.js';
 import { registerMessagingTools } from './tools/messaging.js';
 import { registerFileTools } from './tools/files.js';
+import { registerReportTools } from './tools/report.js';
 
 async function main(): Promise<void> {
   const client = new ConcordClient();
 
   const server = new McpServer(
-    { name: 'concord', version: '0.4.0' },
+    { name: 'concord', version: '0.4.1' },
     { capabilities: { tools: {} } },
   );
 
   registerLifecycleTools(server, client);
   registerMessagingTools(server, client);
   registerFileTools(server, client);
+  registerReportTools(server, client);
 
   // Stderr is the only safe log channel — stdout is reserved for the MCP
   // wire protocol. Claude Code surfaces stderr in plugin logs.

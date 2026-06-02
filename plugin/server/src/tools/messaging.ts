@@ -35,9 +35,10 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
       inputSchema: {
         content: z.string().min(1).max(50_000).describe('Message text. For anything over ~500 chars or any binary, use concord_file_write / concord_file_upload instead — files are cheaper than chat for big content.'),
         pin: z.boolean().optional().describe('Default false. Set true to pin the message as a durable room decision.'),
+        level: z.enum(['info', 'milestone', 'blocked', 'needs_decision', 'done']).optional().describe('Report-room status level. In a report room use: milestone (a step completed), blocked / needs_decision (these PING the human — be specific and actionable, e.g. give the options), done (finished). Defaults to info; ignored in non-report rooms.'),
       },
     },
-    async ({ content, pin }) => {
+    async ({ content, pin, level }) => {
       const { identity, error } = requireIdentity();
       if (error) return error;
       // In E2EE rooms, encrypt the body locally and flag enc=true. The server
@@ -62,6 +63,7 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
             content: outContent,
             pin: pin ?? false,
             enc: encFlag,
+            level,
           },
         });
         // Decrypt any missedMessages the server returned alongside our send.

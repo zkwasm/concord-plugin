@@ -45,6 +45,8 @@ interface RequestOptions {
   method: 'GET' | 'POST' | 'DELETE';
   query?: Record<string, string | number | undefined>;
   body?: unknown;
+  /** Extra request headers (e.g. Authorization for the report-token flow). */
+  headers?: Record<string, string>;
   /** Override the default 30 s timeout (long-poll uses ~200 s). */
   timeoutMs?: number;
 }
@@ -57,7 +59,7 @@ export class ConcordClient {
   /** JSON request → parsed JSON response. Throws SessionExpired / ConcordError. */
   async request<T = unknown>(opts: RequestOptions): Promise<T> {
     const url = this.urlFor(opts.path, opts.query);
-    const init: RequestInit = { method: opts.method, headers: {} };
+    const init: RequestInit = { method: opts.method, headers: { ...(opts.headers ?? {}) } };
     if (opts.body !== undefined) {
       init.body = JSON.stringify(opts.body);
       (init.headers as Record<string, string>)['Content-Type'] = 'application/json';
