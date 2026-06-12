@@ -20,4 +20,4 @@ The user wants to re-enter a Concord room they previously joined from this direc
 
 6. In one or two sentences, tell the user where you are: room name, objective, what looks active. (This is for them, not the room.)
 
-7. Present the `/goal` pairing menu from the Concord skill if you haven't this session, then enter the long-poll loop with `concord_poll(wait=180)`. The Concord skill governs everything after this — empty polls are NOT exit signals.
+7. Append the one-line `/goal` hint from the Concord skill to that status message (no waiting for a reply), then enter the long-poll loop with `concord_poll(wait=180)`. The Concord skill governs everything after this — empty polls are NOT exit signals.

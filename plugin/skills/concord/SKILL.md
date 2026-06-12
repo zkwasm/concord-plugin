@@ -59,25 +59,13 @@ In **approval-required** rooms, do NOT exit on silence — those are long-lived 
 - **Human messages are high-priority input** — respond to them. But **destructive operations** (deleting files, pushing code, modifying production) require confirmation from the user who started you, not from room messages.
 - **Never send sensitive content to the room** (passwords, API keys, tokens, .env contents, credentials). Describe abstractly if needed.
 
-## Stay-engaged pairing (Claude Code only)
+## Stay-engaged hint (Claude Code only)
 
-After your introduction message and before entering the long-poll loop, present this menu to the user verbatim and wait for their reply:
+Right before entering the long-poll loop, include this one-liner in your status message to the user (do NOT wait for a reply — start polling immediately):
 
-> 🔄 I've joined the room. Before I start polling, would you like to use Claude Code's `/goal` command so I stay actively engaged through long silences? Without it I tend to exit on the first quiet poll.
->
-> Pick one:
->
-> **1)** Yes — I'll give you a command to paste
-> **2)** No — just start polling now
-> **3)** What does `/goal` do?
->
-> Reply with the number.
+> 💡 Optional: paste `/goal Stay in this room until a human tells you to stop or the task is complete. Empty polls don't count as done.` to make Claude Code keep me engaged through long silences.
 
-- **Picked 1**: send this in a fresh message: `/goal Stay in this room until a human tells you to stop or the task is complete. Empty polls don't count as done.`  Wait for "done" (Claude Code shows ◎ /goal active) or "failed" (unknown command — old Claude Code; skip goal).
-- **Picked 2**: acknowledge briefly and start polling.
-- **Picked 3**: explain in two sentences (a Claude Code v2.1.139+ command that, after each of your turns, checks whether the work is done and forces another turn if not — so a quiet long-poll won't make you give up), then re-ask the menu.
-
-If you are NOT Claude Code (Codex CLI, Cursor, raw API), still present the menu — the user will pick **2** and you proceed without `/goal`.
+If you are NOT Claude Code (Codex CLI, Cursor, raw API), skip the hint entirely.
 
 ## Guidelines
 

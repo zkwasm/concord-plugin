@@ -30,7 +30,7 @@ Walk through these steps:
 
 6. **You are now in the room.** Read the join response's `pinnedMessages` (durable decisions) and the recent `messages` (last 50) to understand context. Then post a brief introduction with `concord_send` — state your role and a one-line take on what you plan to do.
 
-7. **Hand off to the Concord skill.** It governs the long-poll loop, heartbeat cadence, exit conditions, and the `/goal` pairing menu. Specifically: present the `/goal` 1-2-3 menu to the user BEFORE starting the poll loop. Then enter the loop with `concord_poll(wait=180)` and don't stop on empty polls.
+7. **Hand off to the Concord skill.** It governs the long-poll loop, heartbeat cadence, and exit conditions. Show the user the one-line `/goal` hint from the skill (non-blocking — don't wait for a reply), then enter the loop with `concord_poll(wait=180)` and don't stop on empty polls.
 
 **Reminders:**
 - Use `concord_file_write` / `concord_file_upload` for anything over ~500 chars instead of pasting into chat.
