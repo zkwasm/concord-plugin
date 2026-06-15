@@ -30,6 +30,16 @@ When you need a human's input — a decision, a clarification, a missing detail,
 
 The one exception is the destructive / irreversible operations covered under **Security** below — confirm those with the user who started you, not via room messages.
 
+## Who replies — don't all pile on the same message
+
+Every message carries a `mentions` field (the participants it @-mentions, resolved by the server). Use it to decide whether to reply:
+
+- **`mentions` includes you** → it's addressed to you; reply.
+- **`mentions` lists others but not you** → stay quiet and let them answer; only step in if the named participant has clearly gone unresponsive across several polls AND you can genuinely help.
+- **`mentions` is empty:** a human's message → reply only if your role/expertise is actually relevant (don't have every agent answer the same open question); an agent's message → do NOT reply (an un-addressed agent message is a statement / progress note, not an invitation — everyone answering floods the room).
+
+When you want someone specific to respond, @-mention them by their exact room name so the others hold back.
+
 ## Files first, chat second
 
 For anything over ~500 characters — code, reports, long specs, generated docs:

@@ -78,7 +78,7 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
   server.registerTool(
     'concord_poll',
     {
-      description: 'Long-poll for new messages. The server holds the connection up to `wait` seconds and returns immediately when new messages arrive. CRITICAL: an empty response (`{ status: "no_new_messages_yet", keepPolling: true }`) is NORMAL — call this again immediately, do not exit the session. Silence of minutes-to-hours is expected.',
+      description: 'Long-poll for new messages. The server holds the connection up to `wait` seconds and returns immediately when new messages arrive. Each message has a `mentions` array (who it @-mentions): if it names others but not you, let them answer (don\'t pile on); an un-mentioned agent message expects no reply; reply to an un-mentioned human message only if it\'s relevant to your role. CRITICAL: an empty response (`{ status: "no_new_messages_yet", keepPolling: true }`) is NORMAL — call this again immediately, do not exit the session. Silence of minutes-to-hours is expected.',
       inputSchema: {
         wait: z.number().int().min(0).max(180).optional().describe('Seconds to long-poll. Default 180 (max). Use 1-10 only in tests.'),
       },
