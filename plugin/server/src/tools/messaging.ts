@@ -31,7 +31,7 @@ export function registerMessagingTools(server: McpServer, client: ConcordClient)
   server.registerTool(
     'concord_send',
     {
-      description: 'Post a message to the room you joined. Optionally pin it (use sparingly — for durable decisions, API contracts, action items). Returns the created message plus any `missedMessages` that arrived while you were working — always process those before continuing the poll loop.',
+      description: 'Post a message to the room you joined. **This is also how you ask the human anything** — a decision, a clarification, a choice between options — instead of pausing in your own terminal/CLI; the human watches the room, not your terminal window. Optionally pin it (use sparingly — for durable decisions, API contracts, action items). Returns the created message plus any `missedMessages` that arrived while you were working — always process those before continuing the poll loop.',
       inputSchema: {
         content: z.string().min(1).max(50_000).describe('Message text. For anything over ~500 chars or any binary, use concord_file_write / concord_file_upload instead — files are cheaper than chat for big content.'),
         pin: z.boolean().optional().describe('Default false. Set true to pin the message as a durable room decision.'),

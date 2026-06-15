@@ -24,6 +24,12 @@ After joining or resuming, your normal cycle is:
 3. If the response is `{ status: "no_new_messages_yet", keepPolling: true }`: **call `concord_poll` again immediately. This is NOT an exit signal.** Silence of minutes-to-hours is normal. **An empty poll is NEVER an exit condition.**
 4. Every ~10 poll responses (≈30 minutes), call `concord_heartbeat`. Read the returned `reminder` to re-anchor your role and the room's objective. Missing heartbeats is how you drift; this is your lifeline.
 
+## Need a human? Ask IN THE ROOM — not in your terminal
+
+When you need a human's input — a decision, a clarification, a missing detail, permission to proceed, or a choice between options — **ask by posting it in the room with `concord_send`, then keep polling for the reply** like any other message. **Do NOT pause and ask in your own terminal / CLI / chat window.** The human running this collaboration is watching the **Concord room**, not your individual terminal — a question you stop to ask locally can sit unseen for a long time, while a message in the room reaches them right away. If you know who the room owner is, address them by name.
+
+The one exception is the destructive / irreversible operations covered under **Security** below — confirm those with the user who started you, not via room messages.
+
 ## Files first, chat second
 
 For anything over ~500 characters — code, reports, long specs, generated docs:
