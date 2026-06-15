@@ -297,3 +297,34 @@ describe('identity: setPaused', () => {
     } finally { process.chdir(prev); }
   });
 });
+
+// POSIX file modes only — skip on Windows where chmod is a no-op.
+const itPosix = process.platform === 'win32' ? it.skip : it;
+
+describe('identity: owner-only permissions (M9)', () => {
+  itPosix('creates .concord/ as 0700 and id.json as 0600', () => {
+    saveIdentity(sample(), tmp);
+    const dirMode = fs.statSync(path.join(tmp, NEW)).mode & 0o777;
+    const idMode = fs.statSync(path.join(tmp, NEW, 'id.json')).mode & 0o777;
+    expect(dirMode).toBe(0o700);
+    expect(idMode).toBe(0o600);
+  });
+
+  itPosix('seeds notes.md and tasks.md as 0600', () => {
+    saveIdentity(sample(), tmp);
+    expect(fs.statSync(path.join(tmp, NEW, 'notes.md')).mode & 0o777).toBe(0o600);
+    expect(fs.statSync(path.join(tmp, NEW, 'tasks.md')).mode & 0o777).toBe(0o600);
+  });
+
+  itPosix('keeps id.json 0600 after touch and setPaused rewrites', () => {
+    saveIdentity(sample(), tmp);
+    const prev = process.cwd();
+    try {
+      process.chdir(tmp);
+      touchIdentity();
+      expect(fs.statSync(path.join(tmp, NEW, 'id.json')).mode & 0o777).toBe(0o600);
+      setPaused(true);
+      expect(fs.statSync(path.join(tmp, NEW, 'id.json')).mode & 0o777).toBe(0o600);
+    } finally { process.chdir(prev); }
+  });
+});

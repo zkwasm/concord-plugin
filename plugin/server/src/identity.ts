@@ -84,6 +84,24 @@ function dirOf(cwd: string): string {
   return path.join(cwd, DIR);
 }
 
+/**
+ * Write a private file owner-only (0600). id.json holds the agentSessionId
+ * (a bearer token) and notes/tasks hold private working context — on a shared
+ * host the default 0644 would let any other local user read them. chmod is
+ * best-effort so a filesystem without POSIX modes (e.g. Windows) still writes.
+ */
+function writePrivate(filePath: string, data: string): void {
+  fs.writeFileSync(filePath, data, { encoding: 'utf8', mode: 0o600 });
+  try { fs.chmodSync(filePath, 0o600); } catch { /* best effort */ }
+}
+
+/** Create (or tighten) the identity dir to owner-only (0700) — blocks other
+ * local users from traversing in to read id.json. */
+function ensurePrivateDir(dir: string): void {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try { fs.chmodSync(dir, 0o700); } catch { /* best effort */ }
+}
+
 function legacyDirOf(cwd: string): string {
   return path.join(cwd, LEGACY_DIR);
 }
@@ -136,14 +154,14 @@ export function saveIdentity(identity: Identity, cwd: string = process.cwd()): v
   if (!fs.existsSync(newDir) && fs.existsSync(legacyDir)) {
     fs.renameSync(legacyDir, newDir);
   }
-  fs.mkdirSync(newDir, { recursive: true });
-  fs.writeFileSync(path.join(newDir, ID_FILE), JSON.stringify(identity, null, 2) + '\n', 'utf8');
+  ensurePrivateDir(newDir);
+  writePrivate(path.join(newDir, ID_FILE), JSON.stringify(identity, null, 2) + '\n');
 
   const notesP = path.join(newDir, NOTES_FILE);
-  if (!fs.existsSync(notesP)) fs.writeFileSync(notesP, NOTES_TEMPLATE, 'utf8');
+  if (!fs.existsSync(notesP)) writePrivate(notesP, NOTES_TEMPLATE);
 
   const tasksP = path.join(newDir, TASKS_FILE);
-  if (!fs.existsSync(tasksP)) fs.writeFileSync(tasksP, TASKS_TEMPLATE, 'utf8');
+  if (!fs.existsSync(tasksP)) writePrivate(tasksP, TASKS_TEMPLATE);
 
   ensureGitignored(cwd);
 }
@@ -159,7 +177,7 @@ export function touchIdentity(cwd: string = process.cwd()): void {
   const id = loadIdentity(cwd);
   if (!id) return;
   id.lastUpdatedAt = new Date().toISOString();
-  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + '\n', 'utf8');
+  writePrivate(idP, JSON.stringify(id, null, 2) + '\n');
 }
 
 /**
@@ -177,7 +195,7 @@ export function setPaused(paused: boolean, cwd: string = process.cwd()): Identit
   if (!id) return null;
   id.paused = paused;
   id.lastUpdatedAt = new Date().toISOString();
-  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + '\n', 'utf8');
+  writePrivate(idP, JSON.stringify(id, null, 2) + '\n');
   return id;
 }
 

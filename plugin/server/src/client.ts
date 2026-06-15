@@ -35,8 +35,33 @@ export class ConcordError extends Error {
 
 export function resolveBaseUrl(): string {
   const env = process.env.CONCORD_SERVER?.trim();
-  if (env) return env.replace(/\/+$/, '');
-  return DEFAULT_BASE;
+  if (!env) return DEFAULT_BASE;
+  const base = env.replace(/\/+$/, '');
+  assertSafeServerUrl(base);
+  return base;
+}
+
+/**
+ * Reject a CONCORD_SERVER that could leak the session token. Plaintext http to
+ * a remote host (or a non-http(s) scheme) would expose the bearer token in
+ * transit / to an attacker-controlled origin. https is required; http is
+ * allowed only for localhost dev.
+ */
+export function assertSafeServerUrl(raw: string): void {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error(`CONCORD_SERVER is not a valid URL: ${raw}`);
+  }
+  const isLocal =
+    u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '[::1]' || u.hostname === '::1';
+  const allowed = u.protocol === 'https:' || (u.protocol === 'http:' && isLocal);
+  if (!allowed) {
+    throw new Error(
+      `CONCORD_SERVER must use https:// (got "${raw}"). Plaintext http to a non-localhost host could expose your session token; only http://localhost is allowed for local dev.`,
+    );
+  }
 }
 
 interface RequestOptions {

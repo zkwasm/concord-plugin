@@ -21121,8 +21121,25 @@ var ConcordError = class extends Error {
 };
 function resolveBaseUrl() {
   const env = process.env.CONCORD_SERVER?.trim();
-  if (env) return env.replace(/\/+$/, "");
-  return DEFAULT_BASE;
+  if (!env) return DEFAULT_BASE;
+  const base = env.replace(/\/+$/, "");
+  assertSafeServerUrl(base);
+  return base;
+}
+function assertSafeServerUrl(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error(`CONCORD_SERVER is not a valid URL: ${raw}`);
+  }
+  const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]" || u.hostname === "::1";
+  const allowed = u.protocol === "https:" || u.protocol === "http:" && isLocal;
+  if (!allowed) {
+    throw new Error(
+      `CONCORD_SERVER must use https:// (got "${raw}"). Plaintext http to a non-localhost host could expose your session token; only http://localhost is allowed for local dev.`
+    );
+  }
 }
 var DEFAULT_TIMEOUT_MS = 3e4;
 var ConcordClient = class {
@@ -21269,6 +21286,20 @@ Format: \`- [ ] description (promised HH:MM)\`. Keep under ~2 KB.
 function dirOf(cwd) {
   return path.join(cwd, DIR);
 }
+function writePrivate(filePath, data) {
+  fs.writeFileSync(filePath, data, { encoding: "utf8", mode: 384 });
+  try {
+    fs.chmodSync(filePath, 384);
+  } catch {
+  }
+}
+function ensurePrivateDir(dir) {
+  fs.mkdirSync(dir, { recursive: true, mode: 448 });
+  try {
+    fs.chmodSync(dir, 448);
+  } catch {
+  }
+}
 function legacyDirOf(cwd) {
   return path.join(cwd, LEGACY_DIR);
 }
@@ -21297,12 +21328,12 @@ function saveIdentity(identity, cwd = process.cwd()) {
   if (!fs.existsSync(newDir) && fs.existsSync(legacyDir)) {
     fs.renameSync(legacyDir, newDir);
   }
-  fs.mkdirSync(newDir, { recursive: true });
-  fs.writeFileSync(path.join(newDir, ID_FILE), JSON.stringify(identity, null, 2) + "\n", "utf8");
+  ensurePrivateDir(newDir);
+  writePrivate(path.join(newDir, ID_FILE), JSON.stringify(identity, null, 2) + "\n");
   const notesP = path.join(newDir, NOTES_FILE);
-  if (!fs.existsSync(notesP)) fs.writeFileSync(notesP, NOTES_TEMPLATE, "utf8");
+  if (!fs.existsSync(notesP)) writePrivate(notesP, NOTES_TEMPLATE);
   const tasksP = path.join(newDir, TASKS_FILE);
-  if (!fs.existsSync(tasksP)) fs.writeFileSync(tasksP, TASKS_TEMPLATE, "utf8");
+  if (!fs.existsSync(tasksP)) writePrivate(tasksP, TASKS_TEMPLATE);
   ensureGitignored(cwd);
 }
 function touchIdentity(cwd = process.cwd()) {
@@ -21312,7 +21343,7 @@ function touchIdentity(cwd = process.cwd()) {
   const id = loadIdentity(cwd);
   if (!id) return;
   id.lastUpdatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + "\n", "utf8");
+  writePrivate(idP, JSON.stringify(id, null, 2) + "\n");
 }
 function setPaused(paused, cwd = process.cwd()) {
   const dir = activeIdDir(cwd);
@@ -21322,7 +21353,7 @@ function setPaused(paused, cwd = process.cwd()) {
   if (!id) return null;
   id.paused = paused;
   id.lastUpdatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  fs.writeFileSync(idP, JSON.stringify(id, null, 2) + "\n", "utf8");
+  writePrivate(idP, JSON.stringify(id, null, 2) + "\n");
   return id;
 }
 function archiveIdentity(cwd = process.cwd()) {
@@ -21708,7 +21739,7 @@ function registerMessagingTools(server, client) {
   server.registerTool(
     "concord_send",
     {
-      description: "Post a message to the room you joined. Optionally pin it (use sparingly \u2014 for durable decisions, API contracts, action items). Returns the created message plus any `missedMessages` that arrived while you were working \u2014 always process those before continuing the poll loop.",
+      description: "Post a message to the room you joined. **This is also how you ask the human anything** \u2014 a decision, a clarification, a choice between options \u2014 instead of pausing in your own terminal/CLI; the human watches the room, not your terminal window. Optionally pin it (use sparingly \u2014 for durable decisions, API contracts, action items). Returns the created message plus any `missedMessages` that arrived while you were working \u2014 always process those before continuing the poll loop.",
       inputSchema: {
         content: external_exports.string().min(1).max(5e4).describe("Message text. For anything over ~500 chars or any binary, use concord_file_write / concord_file_upload instead \u2014 files are cheaper than chat for big content."),
         pin: external_exports.boolean().optional().describe("Default false. Set true to pin the message as a durable room decision."),
@@ -21875,6 +21906,13 @@ function mimeOf(filename) {
   const ext = path3.extname(filename).toLowerCase();
   return EXT_MIME[ext] ?? "application/octet-stream";
 }
+function jailDownloadPath(cwd, localPath) {
+  const resolved = path3.resolve(cwd, localPath);
+  const root = path3.resolve(cwd);
+  const rel = path3.relative(root, resolved);
+  if (rel === "" || rel.startsWith("..") || path3.isAbsolute(rel)) return null;
+  return resolved;
+}
 function registerFileTools(server, client) {
   server.registerTool(
     "concord_file_list",
@@ -22027,7 +22065,13 @@ function registerFileTools(server, client) {
           bytes = new Uint8Array(decryptBytes(Buffer.from(dl.bytes), k.contentKey));
         }
         if (localPath) {
-          const resolved = path3.resolve(process.cwd(), localPath);
+          const resolved = jailDownloadPath(process.cwd(), localPath);
+          if (!resolved) {
+            return err(
+              `Refusing to write outside the project directory: ${path3.resolve(process.cwd(), localPath)}. Downloads are jailed to the current working directory so room content can't overwrite sensitive files (e.g. ~/.ssh, shell rc files). Use a path inside the project, or omit localPath to get the bytes back base64-encoded.`,
+              { code: "download_path_escape" }
+            );
+          }
           fs3.mkdirSync(path3.dirname(resolved), { recursive: true });
           fs3.writeFileSync(resolved, bytes);
           return ok({ savedTo: resolved, bytes: bytes.length, mime: dl.mime, filename: dl.filename });

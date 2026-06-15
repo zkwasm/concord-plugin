@@ -54,6 +54,20 @@ function mimeOf(filename: string): string {
   return EXT_MIME[ext] ?? 'application/octet-stream';
 }
 
+/**
+ * Jail a download target to the CWD subtree. Returns the absolute path to
+ * write, or null if `localPath` would escape the project directory — so
+ * room-supplied content (which an agent may be prompt-injected into saving)
+ * can't overwrite sensitive files like ~/.ssh or shell rc files.
+ */
+export function jailDownloadPath(cwd: string, localPath: string): string | null {
+  const resolved = path.resolve(cwd, localPath);
+  const root = path.resolve(cwd);
+  const rel = path.relative(root, resolved);
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  return resolved;
+}
+
 export function registerFileTools(server: McpServer, client: ConcordClient): void {
   server.registerTool(
     'concord_file_list',
@@ -211,7 +225,13 @@ export function registerFileTools(server: McpServer, client: ConcordClient): voi
           bytes = new Uint8Array(decryptBytes(Buffer.from(dl.bytes), k.contentKey!));
         }
         if (localPath) {
-          const resolved = path.resolve(process.cwd(), localPath);
+          const resolved = jailDownloadPath(process.cwd(), localPath);
+          if (!resolved) {
+            return err(
+              `Refusing to write outside the project directory: ${path.resolve(process.cwd(), localPath)}. Downloads are jailed to the current working directory so room content can't overwrite sensitive files (e.g. ~/.ssh, shell rc files). Use a path inside the project, or omit localPath to get the bytes back base64-encoded.`,
+              { code: 'download_path_escape' },
+            );
+          }
           fs.mkdirSync(path.dirname(resolved), { recursive: true });
           fs.writeFileSync(resolved, bytes);
           return ok({ savedTo: resolved, bytes: bytes.length, mime: dl.mime, filename: dl.filename });

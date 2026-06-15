@@ -31,6 +31,28 @@ describe('resolveBaseUrl', () => {
     process.env.CONCORD_SERVER = 'http://localhost:3009/agent/';
     expect(resolveBaseUrl()).toBe('http://localhost:3009/agent');
   });
+
+  it('accepts an https remote host', () => {
+    process.env.CONCORD_SERVER = 'https://concord.example.com/agent';
+    expect(resolveBaseUrl()).toBe('https://concord.example.com/agent');
+  });
+
+  it('allows http only for localhost / loopback', () => {
+    for (const host of ['http://localhost:3009/agent', 'http://127.0.0.1:3009', 'http://[::1]:3009']) {
+      process.env.CONCORD_SERVER = host;
+      expect(() => resolveBaseUrl()).not.toThrow();
+    }
+  });
+
+  it('rejects plaintext http to a remote host (token exfiltration guard)', () => {
+    process.env.CONCORD_SERVER = 'http://evil.example.com/agent';
+    expect(() => resolveBaseUrl()).toThrow(/https/);
+  });
+
+  it('rejects a non-http(s) scheme', () => {
+    process.env.CONCORD_SERVER = 'file:///etc/passwd';
+    expect(() => resolveBaseUrl()).toThrow(/https/);
+  });
 });
 
 describe('ConcordClient.request', () => {
