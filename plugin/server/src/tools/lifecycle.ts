@@ -3,10 +3,12 @@
  * identity, and set-paused. These are the entry points the
  * /concord:{join,resume,stop} slash commands orchestrate.
  */
+import path from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ConcordClient } from '../client.js';
 import { loadIdentity, saveIdentity, archiveIdentity, setPaused, type Identity } from '../identity.js';
+import { decideJoin, buildOverwriteGuard } from '../join-policy.js';
 import { findRoomKey, roomKeyPath, signChallenge, deriveContentKey, decryptResponseMessages, privateKeyPath } from '../crypto.js';
 import { ok, err, fromError } from '../util.js';
 
@@ -48,22 +50,29 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
       inputSchema: {
         roomId: z.string().uuid(),
         sender: z.string().min(1).max(100).describe('Your role / display name in the room. Must be unique within the room.'),
-        archive_existing_identity: z.boolean().optional().describe('If true and an id.json already exists for a different room, archive it to .concord.archived-<date>/ before writing the new one. Default false.'),
+        archive_existing_identity: z.boolean().optional().describe('Confirmation flag for the identity-overwrite guard. If true and joining would replace a DIFFERENT saved identity in this directory (a different room, or the same room under a different sender), the old .concord/ is archived to .concord.archived-<date>/ and a fresh identity is written. Only set this AFTER the user explicitly chose to switch this directory\'s identity — never auto-set it. Default false.'),
       },
     },
     async ({ roomId, sender, archive_existing_identity }) => {
       try {
         const existing = loadIdentity();
-        if (existing && existing.roomId !== roomId) {
-          if (archive_existing_identity) {
-            archiveIdentity();
-          } else {
-            return err(
-              `An identity for a different room already exists in this directory (room=${existing.roomId}, sender=${existing.sender}). Confirm with the user, then retry with archive_existing_identity=true to keep the old notes/tasks and start fresh.`,
-              { code: 'identity_conflict', existingRoomId: existing.roomId, existingSender: existing.sender },
-            );
-          }
+
+        // Guard against silently overwriting a DIFFERENT identity saved in this
+        // directory — which is what a second agent started in the same cwd would
+        // do (and the server would resume the old session under the new name,
+        // collapsing both agents onto one session). decideJoin lets a fresh join
+        // or a same-sender resume through untouched; anything that would replace
+        // a different identity needs the user's explicit consent.
+        const decision = decideJoin(existing, roomId, sender, archive_existing_identity === true, Date.now());
+        if (decision.action === 'guard') {
+          const guard = buildOverwriteGuard(decision, { sender, roomId }, path.basename(process.cwd()));
+          return err(guard.message, guard.data);
         }
+
+        // True resume = same room AND same sender. A confirmed switch to a
+        // different identity archives the old one first and starts fresh.
+        const resuming = !!existing && existing.roomId === roomId && existing.sender === sender;
+        if (existing && !resuming) archiveIdentity();
 
         // Detect end-to-end encryption BEFORE joining: an E2EE room requires a
         // signed challenge in the join body, so we need the room's e2ee flag
@@ -90,10 +99,12 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           e2eeBody.signature = signChallenge(ch.challenge, found.key);
         }
 
-        // If there IS an existing identity for the SAME room, pass its session ID
-        // through so the server resumes the cursor instead of issuing a fresh one.
+        // Resume only when the saved identity is truly the same agent (same room
+        // AND same sender): pass its session ID so the server continues the
+        // cursor. A confirmed switch to a new sender must NOT reuse the old
+        // session, or the server would resume the old agent under the new name.
         const body: Record<string, unknown> = { sender, ...e2eeBody };
-        if (existing && existing.roomId === roomId) body.agentSessionId = existing.agentSessionId;
+        if (resuming) body.agentSessionId = existing!.agentSessionId;
 
         const res = await client.request<{
           room: { id: string; name: string; purpose: string; accessMode: string; mode: string };
@@ -112,7 +123,7 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           agentSessionId: res.agentSessionId,
           roomId,
           serverUrl: client.baseUrl,
-          createdAt: existing?.createdAt ?? now,
+          createdAt: resuming ? existing!.createdAt : now,
           lastUpdatedAt: now,
           ...(e2ee ? { e2ee: true, keyPath: resolvedKeyPath } : {}),
         };
@@ -125,7 +136,7 @@ export function registerLifecycleTools(server: McpServer, client: ConcordClient)
           agentSessionId: res.agentSessionId,
           agentIndex: res.agentIndex,
           identitySavedAt: identity.lastUpdatedAt,
-          resumed: !!existing,
+          resumed: resuming,
           e2ee,
         });
       } catch (e) {

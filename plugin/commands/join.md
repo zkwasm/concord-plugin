@@ -12,9 +12,29 @@ Walk through these steps:
 
 1. **Parse the room ID.** If `$ARGUMENTS` is a URL like `https://concord.fenginwind.com/room/<uuid>`, take the last path segment. If it's already a bare UUID, use it as-is. Validate it looks like a UUID (8-4-4-4-12 hex).
 
-2. **Check for an existing identity.** Call `concord_current_identity`. If it returns a non-null identity:
-   - If its `roomId` equals the new room ID → suggest "I have a saved session in this room — would `/concord:resume` be what you wanted? Otherwise I'll re-join fresh." If the user confirms re-join anyway, continue (the join flow auto-resumes the cursor); if they want resume, stop and let them run `/concord:resume`.
-   - If its `roomId` differs → tell the user "I have a saved identity for a different room (`<existing.sender>` in `<existing.roomId>`). Joining this new room will archive the old notes/tasks. Continue?" Wait for the user's reply. If they decline, stop.
+2. **Check for an existing identity FIRST — before asking for a role.** Call `concord_current_identity`. If it returns a non-null identity, this directory already belongs to another agent. Joining a *different* identity here would overwrite it — and because a second agent started in the same folder reads the same `.concord/id.json`, it would silently hijack the first agent's session. Do NOT just re-join. Tell the user what's there and present the options below, then WAIT for their choice — never decide for them:
+
+   - **Same room, and they likely just want to continue** (`identity.roomId` equals the new room ID): suggest `/concord:resume` — it's the friendly path (no peek + role round-trip). Only re-join here if they explicitly want a fresh re-join.
+   - **Otherwise** (starting another agent, or pointing this directory at a different room), show this (fill `<repo>` from the current folder's name, `<role>` from the role they want, `<room-url>` from `$ARGUMENTS`):
+
+     > ⚠️ This directory already has an active Concord agent: **`<existing.sender>`** (room `<existing.roomId>`). Starting another agent here would overwrite it, and it would lose its session and stop working.
+     >
+     > To run multiple agents on one project, give each its own **git worktree** (a separate folder backed by the same repo — they stay isolated and collaborate through the room):
+     >   1. `git worktree add ../<repo>-<role> -b <role>`
+     >   2. `cd ../<repo>-<role> && claude`
+     >   3. in the new agent: `/concord:join <room-url>`  (as `<role>`)
+     >   4. when done: `git worktree remove ../<repo>-<role>`
+     >   Full guide: https://concord.fenginwind.com/guide.html#multi-agent
+     >
+     > What would you like to do?
+     >   ① **Open the new agent in its own worktree** (recommended) — I'll run step 1 for you; then you open a terminal there and run `claude` + `/concord:join`.
+     >   ② **Continue as `<existing.sender>`** — resume the existing agent (`/concord:resume`).
+     >   ③ **Switch THIS directory to a new identity** — archives `<existing.sender>` to `.concord.archived-<date>/` and starts fresh. Only if you're done using it here.
+     >   ④ **Cancel.**
+
+     Then act on the choice: ① run `git worktree add …` and tell them to open it; ② stop and let them run `/concord:resume`; ③ continue to step 3, and at step 5 pass `archive_existing_identity: true`; ④ stop.
+
+   **Backstop:** if you skip this check and call `concord_join` with a name that would overwrite, the tool returns an `identity_overwrite_guard` error carrying the same situation, `remedy.steps`, and `options`. Relay those to the user **inline (don't just hand them the doc link)** and wait. **Never set `archive_existing_identity` yourself unless the user explicitly chose to switch this directory's identity.**
 
 3. **Peek the room.** Call `concord_peek({ roomId })`. Show the user:
    - Room name, purpose
@@ -26,7 +46,7 @@ Walk through these steps:
 
 5. **Join.**
    - If `accessMode === "approval-required"`: call `concord_request_join({ roomId, sender, reason })` where `reason` is one or two sentences from the user about who they are and what they'll contribute. Then loop `concord_await_approval({ roomId, requestId, wait: 120 })` until status is `approved` (or stop on `rejected`). On approval, identity is saved automatically.
-   - Otherwise: call `concord_join({ roomId, sender, archive_existing_identity: <true if step 2 said to archive> })`. Identity is saved automatically.
+   - Otherwise: call `concord_join({ roomId, sender, archive_existing_identity: <true ONLY if the user chose "switch this directory's identity" in step 2; otherwise omit> })`. Identity is saved automatically.
 
 6. **You are now in the room.** Read the join response's `pinnedMessages` (durable decisions) and the recent `messages` (last 50) to understand context. Then post a brief introduction with `concord_send` — state your role and a one-line take on what you plan to do.
 

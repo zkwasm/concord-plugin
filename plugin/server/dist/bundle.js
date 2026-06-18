@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path5) {
-      let input = path5;
+    function removeDotSegments(path6) {
+      let input = path6;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3479,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path5, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
+        const [path6, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7364,8 +7364,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path5, errorMaps, issueData } = params;
-  const fullPath = [...path5, ...issueData.path || []];
+  const { data, path: path6, errorMaps, issueData } = params;
+  const fullPath = [...path6, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7481,11 +7481,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path5, key) {
+  constructor(parent, value, path6, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path5;
+    this._path = path6;
     this._key = key;
   }
   get path() {
@@ -11122,10 +11122,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path5) {
-  if (!path5)
+function getElementAtPath(obj, path6) {
+  if (!path6)
     return obj;
-  return path5.reduce((acc, key) => acc?.[key], obj);
+  return path6.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11445,11 +11445,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path5, issues) {
+function prefixIssues(path6, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path5);
+    iss.path.unshift(path6);
     return iss;
   });
 }
@@ -21159,8 +21159,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** multipart/form-data upload. `extraFields` are sent as form fields alongside the file. */
-  async upload(path5, fileName, bytes, mime, extraFields) {
-    const url = this.urlFor(path5);
+  async upload(path6, fileName, bytes, mime, extraFields) {
+    const url = this.urlFor(path6);
     const fd = new FormData();
     for (const [k, v] of Object.entries(extraFields)) fd.append(k, v);
     fd.append("file", new Blob([bytes], { type: mime }), fileName);
@@ -21168,8 +21168,8 @@ var ConcordClient = class {
     return this.parseJson(res);
   }
   /** Binary download. Returns raw bytes plus the suggested filename + mime. */
-  async download(path5, query) {
-    const url = this.urlFor(path5, query);
+  async download(path6, query) {
+    const url = this.urlFor(path6, query);
     const res = await this.doFetch(url, { method: "GET" });
     if (!res.ok) await this.throwHttpError(res);
     const buf = new Uint8Array(await res.arrayBuffer());
@@ -21181,8 +21181,8 @@ var ConcordClient = class {
     return { bytes: buf, mime, filename, enc };
   }
   // ── internals ──────────────────────────────────────────────────────────
-  urlFor(path5, query) {
-    let url = this.baseUrl + (path5.startsWith("/") ? path5 : `/${path5}`);
+  urlFor(path6, query) {
+    let url = this.baseUrl + (path6.startsWith("/") ? path6 : `/${path6}`);
     if (query) {
       const qs = new URLSearchParams();
       for (const [k, v] of Object.entries(query)) {
@@ -21248,6 +21248,9 @@ function extractCode(body) {
   }
   return null;
 }
+
+// src/tools/lifecycle.ts
+import path3 from "node:path";
 
 // src/identity.ts
 import fs from "node:fs";
@@ -21380,6 +21383,70 @@ function ensureGitignored(cwd) {
     if (!content.endsWith("\n")) content += "\n";
   }
   fs.writeFileSync(giPath, content + line + "\n", "utf8");
+}
+
+// src/join-policy.ts
+var MULTI_AGENT_DOCS_URL = "https://concord.fenginwind.com/guide.html#multi-agent";
+var RECENTLY_ACTIVE_MS = 35 * 60 * 1e3;
+function decideJoin(existing, roomId, sender, confirmed, nowMs) {
+  if (!existing) return { action: "proceed" };
+  const sameRoom = existing.roomId === roomId;
+  if (sameRoom && existing.sender === sender) return { action: "proceed" };
+  if (confirmed) return { action: "proceed" };
+  const lastMs = Date.parse(existing.lastUpdatedAt);
+  const recentlyActive = Number.isFinite(lastMs) && nowMs - lastMs < RECENTLY_ACTIVE_MS;
+  return {
+    action: "guard",
+    reason: sameRoom ? "different_sender" : "different_room",
+    existing: { sender: existing.sender, roomId: existing.roomId, recentlyActive }
+  };
+}
+function slug(s) {
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "agent";
+}
+function buildOverwriteGuard(decision, incoming, repoBaseName) {
+  const ex = decision.existing;
+  const base = slug(repoBaseName) || "project";
+  const branch = slug(incoming.sender);
+  const wtPath = `../${base}-${branch}`;
+  const activeNote = ex.recentlyActive ? " (active in the last ~30 min \u2014 most likely still running)" : "";
+  const roomPhrase = decision.reason === "different_room" ? "a different room" : "this room";
+  const steps = [
+    `git worktree add ${wtPath} -b ${branch}`,
+    `cd ${wtPath} && claude`,
+    `in that new agent, run: /concord:join <room-url>   (as "${incoming.sender}")`,
+    `when finished, merge the branch back and run: git worktree remove ${wtPath}`
+  ];
+  const message = `This directory already has an active Concord identity: "${ex.sender}" in room ${ex.roomId}${activeNote}. Joining ${roomPhrase} as "${incoming.sender}" here would OVERWRITE "${ex.sender}"'s identity (.concord/id.json), so "${ex.sender}" would lose its session and stop working.
+
+To run more than one agent on a single project, give each agent its OWN git worktree \u2014 a separate folder backed by the same repo, so they stay isolated and collaborate through the room instead of the local disk:
+` + steps.map((s, i) => `  ${i + 1}. ${s}`).join("\n") + `
+
+Full guide: ${MULTI_AGENT_DOCS_URL}
+
+Present these options to the user and WAIT for their choice \u2014 never decide for them:
+  \u2022 Keep them separate (recommended): set up the worktree above; do NOT overwrite here.
+` + (decision.reason === "different_sender" ? `  \u2022 Resume "${ex.sender}" instead: if you meant to continue the existing agent, retry concord_join with sender="${ex.sender}".
+` : "") + `  \u2022 Switch this directory to "${incoming.sender}": only if you are done with "${ex.sender}" here \u2014 retry concord_join with archive_existing_identity=true (the old identity is archived, not deleted).
+  \u2022 Cancel.`;
+  const options = [
+    { id: "worktree", recommended: true, label: "Set up a separate git worktree for the new agent" },
+    ...decision.reason === "different_sender" ? [{ id: "resume_existing", label: `Resume "${ex.sender}" instead` }] : [],
+    { id: "switch", label: `Switch this directory to "${incoming.sender}" (archives the old identity)` },
+    { id: "cancel", label: "Cancel" }
+  ];
+  return {
+    message,
+    data: {
+      code: "identity_overwrite_guard",
+      reason: decision.reason,
+      existing: ex,
+      incoming,
+      docsUrl: MULTI_AGENT_DOCS_URL,
+      remedy: { summary: "Give each agent its own git worktree", steps, docsUrl: MULTI_AGENT_DOCS_URL },
+      options
+    }
+  };
 }
 
 // src/crypto.ts
@@ -21585,22 +21652,19 @@ function registerLifecycleTools(server, client) {
       inputSchema: {
         roomId: external_exports.string().uuid(),
         sender: external_exports.string().min(1).max(100).describe("Your role / display name in the room. Must be unique within the room."),
-        archive_existing_identity: external_exports.boolean().optional().describe("If true and an id.json already exists for a different room, archive it to .concord.archived-<date>/ before writing the new one. Default false.")
+        archive_existing_identity: external_exports.boolean().optional().describe("Confirmation flag for the identity-overwrite guard. If true and joining would replace a DIFFERENT saved identity in this directory (a different room, or the same room under a different sender), the old .concord/ is archived to .concord.archived-<date>/ and a fresh identity is written. Only set this AFTER the user explicitly chose to switch this directory's identity \u2014 never auto-set it. Default false.")
       }
     },
     async ({ roomId, sender, archive_existing_identity }) => {
       try {
         const existing = loadIdentity();
-        if (existing && existing.roomId !== roomId) {
-          if (archive_existing_identity) {
-            archiveIdentity();
-          } else {
-            return err(
-              `An identity for a different room already exists in this directory (room=${existing.roomId}, sender=${existing.sender}). Confirm with the user, then retry with archive_existing_identity=true to keep the old notes/tasks and start fresh.`,
-              { code: "identity_conflict", existingRoomId: existing.roomId, existingSender: existing.sender }
-            );
-          }
+        const decision = decideJoin(existing, roomId, sender, archive_existing_identity === true, Date.now());
+        if (decision.action === "guard") {
+          const guard = buildOverwriteGuard(decision, { sender, roomId }, path3.basename(process.cwd()));
+          return err(guard.message, guard.data);
         }
+        const resuming = !!existing && existing.roomId === roomId && existing.sender === sender;
+        if (existing && !resuming) archiveIdentity();
         const info = await client.request({ method: "GET", path: `/rooms/${roomId}/info` });
         const e2ee = info.e2ee === true;
         let contentKey;
@@ -21621,7 +21685,7 @@ function registerLifecycleTools(server, client) {
           e2eeBody.signature = signChallenge(ch.challenge, found.key);
         }
         const body = { sender, ...e2eeBody };
-        if (existing && existing.roomId === roomId) body.agentSessionId = existing.agentSessionId;
+        if (resuming) body.agentSessionId = existing.agentSessionId;
         const res = await client.request({ method: "POST", path: `/rooms/${roomId}/join`, body });
         if (e2ee && contentKey) decryptResponseMessages(res, contentKey);
         const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -21630,7 +21694,7 @@ function registerLifecycleTools(server, client) {
           agentSessionId: res.agentSessionId,
           roomId,
           serverUrl: client.baseUrl,
-          createdAt: existing?.createdAt ?? now,
+          createdAt: resuming ? existing.createdAt : now,
           lastUpdatedAt: now,
           ...e2ee ? { e2ee: true, keyPath: resolvedKeyPath } : {}
         };
@@ -21642,7 +21706,7 @@ function registerLifecycleTools(server, client) {
           agentSessionId: res.agentSessionId,
           agentIndex: res.agentIndex,
           identitySavedAt: identity.lastUpdatedAt,
-          resumed: !!existing,
+          resumed: resuming,
           e2ee
         });
       } catch (e) {
@@ -21873,7 +21937,7 @@ function registerMessagingTools(server, client) {
 
 // src/tools/files.ts
 import fs3 from "node:fs";
-import path3 from "node:path";
+import path4 from "node:path";
 function resolveContentKey2(keyPath) {
   const key = keyPath ? loadPrivateKeyAt(keyPath) : loadPrivateKey();
   if (!key) {
@@ -21903,14 +21967,14 @@ var EXT_MIME = {
   ".ts": "application/typescript"
 };
 function mimeOf(filename) {
-  const ext = path3.extname(filename).toLowerCase();
+  const ext = path4.extname(filename).toLowerCase();
   return EXT_MIME[ext] ?? "application/octet-stream";
 }
 function jailDownloadPath(cwd, localPath) {
-  const resolved = path3.resolve(cwd, localPath);
-  const root = path3.resolve(cwd);
-  const rel = path3.relative(root, resolved);
-  if (rel === "" || rel.startsWith("..") || path3.isAbsolute(rel)) return null;
+  const resolved = path4.resolve(cwd, localPath);
+  const root = path4.resolve(cwd);
+  const rel = path4.relative(root, resolved);
+  if (rel === "" || rel.startsWith("..") || path4.isAbsolute(rel)) return null;
   return resolved;
 }
 function registerFileTools(server, client) {
@@ -22012,12 +22076,12 @@ function registerFileTools(server, client) {
     async ({ localPath, remotePath }) => {
       const { identity, error: error2 } = requireIdentity();
       if (error2) return error2;
-      const resolved = path3.resolve(process.cwd(), localPath);
+      const resolved = path4.resolve(process.cwd(), localPath);
       if (!fs3.existsSync(resolved)) {
         return err(`Local file not found: ${resolved}`, { code: "local_file_not_found" });
       }
       const bytes = fs3.readFileSync(resolved);
-      const filename = path3.basename(resolved);
+      const filename = path4.basename(resolved);
       const remote = remotePath ?? filename;
       let outBytes = new Uint8Array(bytes);
       const fields = { agentSessionId: identity.agentSessionId, path: remote };
@@ -22068,11 +22132,11 @@ function registerFileTools(server, client) {
           const resolved = jailDownloadPath(process.cwd(), localPath);
           if (!resolved) {
             return err(
-              `Refusing to write outside the project directory: ${path3.resolve(process.cwd(), localPath)}. Downloads are jailed to the current working directory so room content can't overwrite sensitive files (e.g. ~/.ssh, shell rc files). Use a path inside the project, or omit localPath to get the bytes back base64-encoded.`,
+              `Refusing to write outside the project directory: ${path4.resolve(process.cwd(), localPath)}. Downloads are jailed to the current working directory so room content can't overwrite sensitive files (e.g. ~/.ssh, shell rc files). Use a path inside the project, or omit localPath to get the bytes back base64-encoded.`,
               { code: "download_path_escape" }
             );
           }
-          fs3.mkdirSync(path3.dirname(resolved), { recursive: true });
+          fs3.mkdirSync(path4.dirname(resolved), { recursive: true });
           fs3.writeFileSync(resolved, bytes);
           return ok({ savedTo: resolved, bytes: bytes.length, mime: dl.mime, filename: dl.filename });
         }
@@ -22092,14 +22156,14 @@ function registerFileTools(server, client) {
 // src/tools/report.ts
 import os2 from "node:os";
 import fs4 from "node:fs";
-import path4 from "node:path";
+import path5 from "node:path";
 function concordHome() {
-  const dir = path4.join(os2.homedir(), ".concord");
+  const dir = path5.join(os2.homedir(), ".concord");
   fs4.mkdirSync(dir, { recursive: true });
   return dir;
 }
-var tokenFile = () => path4.join(concordHome(), "report-token.json");
-var pendingFile = () => path4.join(concordHome(), "report-auth-pending.json");
+var tokenFile = () => path5.join(concordHome(), "report-token.json");
+var pendingFile = () => path5.join(concordHome(), "report-auth-pending.json");
 function readJson(p) {
   try {
     return JSON.parse(fs4.readFileSync(p, "utf8"));

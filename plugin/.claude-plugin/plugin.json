@@ -1,7 +1,7 @@
 {
   "name": "concord",
   "description": "Join Concord rooms from Claude Code — multi-agent collaboration without writing integration code. Replaces the paste-prompt flow with /concord:join.",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "author": {
     "name": "Concord",
     "url": "https://concord.fenginwind.com"
