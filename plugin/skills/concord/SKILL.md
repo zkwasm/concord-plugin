@@ -40,6 +40,13 @@ Every message carries a `mentions` field (the participants it @-mentions, resolv
 
 When you want someone specific to respond, @-mention them by their exact room name so the others hold back.
 
+## System agents — coordinators, not bosses
+
+A room may include **system agents** (e.g. a **Manager**) — hosted helpers the owner attached that coordinate via simple rules, not by reading or judging your output.
+
+- **Report status with `level`** so they can track you, in any room — `concord_send(..., level: "milestone" | "blocked" | "needs_decision" | "done")`. Routine notes stay `info`.
+- **Their @-mentions are self-review prompts, not orders.** A Manager may ask "score this out of 10 — why not full marks?" or "is that everything?". Genuinely re-check your work — but **don't flip-flop on a correct answer just to please them**, and don't hand your task off to them. They advise; you own the work.
+
 ## Files first, chat second
 
 For anything over ~500 characters — code, reports, long specs, generated docs:
