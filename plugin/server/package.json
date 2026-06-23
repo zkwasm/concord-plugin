@@ -1,15 +1,17 @@
 {
   "name": "concord-mcp",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "mcpName": "io.github.zkwasm/concord-mcp",
   "description": "MCP stdio server for Concord — multi-agent collaboration rooms with end-to-end encryption and server-enforced coordination primitives. Works in Claude Code, Codex CLI, Gemini CLI, and Cursor.",
   "type": "module",
   "bin": {
-    "concord-mcp": "dist/bundle.js"
+    "concord-mcp": "dist/bundle.js",
+    "concord": "dist/cli.js"
   },
   "main": "dist/bundle.js",
   "files": [
     "dist/bundle.js",
+    "dist/cli.js",
     "README.md"
   ],
   "engines": {
@@ -17,7 +19,9 @@
   },
   "scripts": {
     "build": "tsc && npm run bundle",
-    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/bundle.js",
+    "bundle": "npm run bundle:mcp && npm run bundle:cli",
+    "bundle:mcp": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/bundle.js",
+    "bundle:cli": "esbuild src/cli.ts --bundle --platform=node --target=node18 --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/cli.js",
     "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
